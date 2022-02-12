@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 
 describe 'Sidekiq::Testing' do
@@ -100,7 +101,7 @@ describe 'Sidekiq::Testing' do
     end
 
     class AttributeMiddleware
-      def call(worker, msg, queue)
+      def call(worker, _msg, _queue)
         worker.foo = :bar if worker.respond_to?(:foo=)
         yield
       end
@@ -129,5 +130,4 @@ describe 'Sidekiq::Testing' do
       end
     end
   end
-
 end

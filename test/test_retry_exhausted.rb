@@ -1,4 +1,3 @@
-# encoding: utf-8
 require_relative 'helper'
 require 'sidekiq/job_retry'
 
@@ -50,12 +49,12 @@ describe 'sidekiq_retries_exhausted' do
     @old_worker ||= OldWorker.new
   end
 
-  def handler(options={})
+  def handler(options = {})
     @handler ||= Sidekiq::JobRetry.new(options)
   end
 
-  def job(options={})
-    @job ||= Sidekiq.dump_json({'class' => 'Bob', 'args' => [1, 2, 'foo']}.merge(options))
+  def job(options = {})
+    @job ||= Sidekiq.dump_json({ 'class' => 'Bob', 'args' => [1, 2, 'foo'] }.merge(options))
   end
 
   it 'does not run exhausted block when job successful on first run' do
@@ -94,7 +93,6 @@ describe 'sidekiq_retries_exhausted' do
     assert NewWorker.exhausted_called
   end
 
-
   it 'passes job and exception to retries exhausted block' do
     raised_error = assert_raises RuntimeError do
       handler.local(new_worker, job('retry_count' => 0, 'retry' => 1), 'default') do
@@ -122,30 +120,28 @@ describe 'sidekiq_retries_exhausted' do
   end
 
   it 'allows global failure handlers' do
-    begin
-      class Foobar
-        include Sidekiq::Worker
-      end
-
-      exhausted_job = nil
-      exhausted_exception = nil
-      Sidekiq.death_handlers.clear
-      Sidekiq.death_handlers << proc do |job, ex|
-        exhausted_job = job
-        exhausted_exception = ex
-      end
-      f = Foobar.new
-      raised_error = assert_raises RuntimeError do
-        handler.local(f, job('retry_count' => 0, 'retry' => 1), 'default') do
-          raise 'kerblammo!'
-        end
-      end
-      raised_error = raised_error.cause
-
-      assert exhausted_job
-      assert_equal raised_error, exhausted_exception
-    ensure
-      Sidekiq.death_handlers.clear
+    class Foobar
+      include Sidekiq::Worker
     end
+
+    exhausted_job = nil
+    exhausted_exception = nil
+    Sidekiq.death_handlers.clear
+    Sidekiq.death_handlers << proc do |job, ex|
+      exhausted_job = job
+      exhausted_exception = ex
+    end
+    f = Foobar.new
+    raised_error = assert_raises RuntimeError do
+      handler.local(f, job('retry_count' => 0, 'retry' => 1), 'default') do
+        raise 'kerblammo!'
+      end
+    end
+    raised_error = raised_error.cause
+
+    assert exhausted_job
+    assert_equal raised_error, exhausted_exception
+  ensure
+    Sidekiq.death_handlers.clear
   end
 end

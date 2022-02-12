@@ -26,14 +26,14 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-require "securerandom"
-require "base64"
-require "rack/request"
+require 'securerandom'
+require 'base64'
+require 'rack/request'
 
 module Sidekiq
   class Web
     class CsrfProtection
-      def initialize(app, options = nil)
+      def initialize(app, _options = nil)
         @app = app
       end
 
@@ -53,20 +53,20 @@ module Sidekiq
       end
 
       def safe?(env)
-        %w[GET HEAD OPTIONS TRACE].include? env["REQUEST_METHOD"]
+        %w[GET HEAD OPTIONS TRACE].include? env['REQUEST_METHOD']
       end
 
       def logger(env)
-        @logger ||= (env["rack.logger"] || ::Logger.new(env["rack.errors"]))
+        @logger ||= (env['rack.logger'] || ::Logger.new(env['rack.errors']))
       end
 
       def deny(env)
         logger(env).warn "attack prevented by #{self.class}"
-        [403, {"Content-Type" => "text/plain"}, ["Forbidden"]]
+        [403, { 'Content-Type' => 'text/plain' }, ['Forbidden']]
       end
 
       def session(env)
-        env["rack.session"] || fail(<<~EOM)
+        env['rack.session'] || raise(<<~EOM)
           Sidekiq::Web needs a valid Rack session for CSRF protection. If this is a Rails app,
           make sure you mount Sidekiq::Web *inside* your application routes:
 
@@ -96,7 +96,7 @@ module Sidekiq
       def accept?(env)
         return true if safe?(env)
 
-        giventoken = ::Rack::Request.new(env).params["authenticity_token"]
+        giventoken = ::Rack::Request.new(env).params['authenticity_token']
         valid_token?(env, giventoken)
       end
 
@@ -173,7 +173,7 @@ module Sidekiq
       end
 
       def xor_byte_strings(s1, s2)
-        s1.bytes.zip(s2.bytes).map { |(c1, c2)| c1 ^ c2 }.pack("c*")
+        s1.bytes.zip(s2.bytes).map { |(c1, c2)| c1 ^ c2 }.pack('c*')
       end
     end
   end

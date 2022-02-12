@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/monitor'
 
@@ -18,7 +19,7 @@ end
 
 describe Sidekiq::Monitor do
   before do
-    Sidekiq.redis {|c| c.flushdb}
+    Sidekiq.redis { |c| c.flushdb }
   end
 
   describe 'status' do
@@ -41,7 +42,7 @@ describe Sidekiq::Monitor do
 
       it 'displays the correct output' do
         mock_stats = OpenStruct.new(
-          processed: 420710,
+          processed: 420_710,
           failed: 12,
           workers_size: 34,
           enqueued: 56,

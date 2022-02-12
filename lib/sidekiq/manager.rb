@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require "sidekiq/util"
-require "sidekiq/processor"
-require "sidekiq/fetch"
-require "set"
+require 'sidekiq/util'
+require 'sidekiq/processor'
+require 'sidekiq/fetch'
+require 'set'
 
 module Sidekiq
   ##
@@ -23,8 +23,7 @@ module Sidekiq
   class Manager
     include Util
 
-    attr_reader :workers
-    attr_reader :options
+    attr_reader :workers, :options
 
     def initialize(options = {})
       logger.debug { options.inspect }
@@ -48,9 +47,10 @@ module Sidekiq
 
     def quiet
       return if @done
+
       @done = true
 
-      logger.info { "Terminating quiet workers" }
+      logger.info { 'Terminating quiet workers' }
       @workers.each { |x| x.terminate }
       fire_event(:quiet, reverse: true)
     end
@@ -65,7 +65,7 @@ module Sidekiq
       sleep PAUSE_TIME
       return if @workers.empty?
 
-      logger.info { "Pausing to allow workers to finish..." }
+      logger.info { 'Pausing to allow workers to finish...' }
       wait_for(deadline) { @workers.empty? }
       return if @workers.empty?
 
@@ -78,7 +78,7 @@ module Sidekiq
       end
     end
 
-    def processor_died(processor, reason)
+    def processor_died(processor, _reason)
       @plock.synchronize do
         @workers.delete(processor)
         unless @done

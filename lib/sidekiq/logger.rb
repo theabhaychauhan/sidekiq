@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "logger"
-require "time"
+require 'logger'
+require 'time'
 
 module Sidekiq
   module Context
@@ -24,11 +24,11 @@ module Sidekiq
 
   module LoggingUtils
     LEVELS = {
-      "debug" => 0,
-      "info" => 1,
-      "warn" => 2,
-      "error" => 3,
-      "fatal" => 4
+      'debug' => 0,
+      'info' => 1,
+      'warn' => 2,
+      'error' => 3,
+      'fatal' => 4
     }
     LEVELS.default_proc = proc do |_, level|
       Sidekiq.logger.warn("Invalid log level: #{level.inspect}")
@@ -117,7 +117,7 @@ module Sidekiq
     module Formatters
       class Base < ::Logger::Formatter
         def tid
-          Thread.current["sidekiq_tid"] ||= (Thread.current.object_id ^ ::Process.pid).to_s(36)
+          Thread.current['sidekiq_tid'] ||= (Thread.current.object_id ^ ::Process.pid).to_s(36)
         end
 
         def ctx
@@ -126,32 +126,32 @@ module Sidekiq
 
         def format_context
           if ctx.any?
-            " " + ctx.compact.map { |k, v|
+            ' ' + ctx.compact.map do |k, v|
               case v
               when Array
-                "#{k}=#{v.join(",")}"
+                "#{k}=#{v.join(',')}"
               else
                 "#{k}=#{v}"
               end
-            }.join(" ")
+            end.join(' ')
           end
         end
       end
 
       class Pretty < Base
-        def call(severity, time, program_name, message)
+        def call(severity, time, _program_name, message)
           "#{time.utc.iso8601(3)} pid=#{::Process.pid} tid=#{tid}#{format_context} #{severity}: #{message}\n"
         end
       end
 
       class WithoutTimestamp < Pretty
-        def call(severity, time, program_name, message)
+        def call(severity, _time, _program_name, message)
           "pid=#{::Process.pid} tid=#{tid}#{format_context} #{severity}: #{message}\n"
         end
       end
 
       class JSON < Base
-        def call(severity, time, program_name, message)
+        def call(severity, time, _program_name, message)
           hash = {
             ts: time.utc.iso8601(3),
             pid: ::Process.pid,
@@ -160,7 +160,7 @@ module Sidekiq
             msg: message
           }
           c = ctx
-          hash["ctx"] = c unless c.empty?
+          hash['ctx'] = c unless c.empty?
 
           Sidekiq.dump_json(hash) << "\n"
         end

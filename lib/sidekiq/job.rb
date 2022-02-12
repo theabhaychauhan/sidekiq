@@ -1,4 +1,4 @@
-require "sidekiq/worker"
+require 'sidekiq/worker'
 
 module Sidekiq
   # Sidekiq::Job is a new alias for Sidekiq::Worker as of Sidekiq 6.3.0.

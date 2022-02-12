@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "sidekiq/manager"
-require "sidekiq/fetch"
-require "sidekiq/scheduled"
+require 'sidekiq/manager'
+require 'sidekiq/fetch'
+require 'sidekiq/scheduled'
 
 module Sidekiq
   # The Launcher starts the Manager and Poller threads and provides the process heartbeat.
@@ -12,11 +12,11 @@ module Sidekiq
     STATS_TTL = 5 * 365 * 24 * 60 * 60 # 5 years
 
     PROCTITLES = [
-      proc { "sidekiq" },
+      proc { 'sidekiq' },
       proc { Sidekiq::VERSION },
-      proc { |me, data| data["tag"] },
-      proc { |me, data| "[#{Processor::WORKER_STATE.size} of #{data["concurrency"]} busy]" },
-      proc { |me, data| "stopping" if me.stopping? }
+      proc { |_me, data| data['tag'] },
+      proc { |_me, data| "[#{Processor::WORKER_STATE.size} of #{data['concurrency']} busy]" },
+      proc { |me, _data| 'stopping' if me.stopping? }
     ]
 
     attr_accessor :manager, :poller, :fetcher
@@ -30,7 +30,7 @@ module Sidekiq
     end
 
     def run
-      @thread = safe_thread("heartbeat", &method(:start_heartbeat))
+      @thread = safe_thread('heartbeat', &method(:start_heartbeat))
       @poller.start
       @manager.start
     end
@@ -76,7 +76,7 @@ module Sidekiq
         heartbeat
         sleep BEAT_PAUSE
       end
-      Sidekiq.logger.info("Heartbeat stopping...")
+      Sidekiq.logger.info('Heartbeat stopping...')
     end
 
     def clear_heartbeat
@@ -85,16 +85,16 @@ module Sidekiq
       # doesn't actually exit, it'll reappear in the Web UI.
       Sidekiq.redis do |conn|
         conn.pipelined do |pipeline|
-          pipeline.srem("processes", identity)
+          pipeline.srem('processes', identity)
           pipeline.unlink("#{identity}:workers")
         end
       end
-    rescue
+    rescue StandardError
       # best effort, ignore network errors
     end
 
     def heartbeat
-      $0 = PROCTITLES.map { |proc| proc.call(self, to_data) }.compact.join(" ")
+      $0 = PROCTITLES.map { |proc| proc.call(self, to_data) }.compact.join(' ')
 
       ❤
     end
@@ -104,23 +104,23 @@ module Sidekiq
       procd = Processor::PROCESSED.reset
       return if fails + procd == 0
 
-      nowdate = Time.now.utc.strftime("%Y-%m-%d")
+      nowdate = Time.now.utc.strftime('%Y-%m-%d')
       begin
         Sidekiq.redis do |conn|
           conn.pipelined do |pipeline|
-            pipeline.incrby("stat:processed", procd)
+            pipeline.incrby('stat:processed', procd)
             pipeline.incrby("stat:processed:#{nowdate}", procd)
             pipeline.expire("stat:processed:#{nowdate}", STATS_TTL)
 
-            pipeline.incrby("stat:failed", fails)
+            pipeline.incrby('stat:failed', fails)
             pipeline.incrby("stat:failed:#{nowdate}", fails)
             pipeline.expire("stat:failed:#{nowdate}", STATS_TTL)
           end
         end
-      rescue => ex
+      rescue StandardError => e
         # we're exiting the process, things might be shut down so don't
         # try to handle the exception
-        Sidekiq.logger.warn("Unable to flush stats: #{ex}")
+        Sidekiq.logger.warn("Unable to flush stats: #{e}")
       end
     end
     at_exit(&method(:flush_stats))
@@ -135,15 +135,15 @@ module Sidekiq
         curstate = Processor::WORKER_STATE.dup
 
         workers_key = "#{key}:workers"
-        nowdate = Time.now.utc.strftime("%Y-%m-%d")
+        nowdate = Time.now.utc.strftime('%Y-%m-%d')
 
         Sidekiq.redis do |conn|
           conn.multi do |transaction|
-            transaction.incrby("stat:processed", procd)
+            transaction.incrby('stat:processed', procd)
             transaction.incrby("stat:processed:#{nowdate}", procd)
             transaction.expire("stat:processed:#{nowdate}", STATS_TTL)
 
-            transaction.incrby("stat:failed", fails)
+            transaction.incrby('stat:failed', fails)
             transaction.incrby("stat:failed:#{nowdate}", fails)
             transaction.expire("stat:failed:#{nowdate}", STATS_TTL)
 
@@ -160,20 +160,20 @@ module Sidekiq
         fails = procd = 0
         kb = memory_usage(::Process.pid)
 
-        _, exists, _, _, msg = Sidekiq.redis { |conn|
-          conn.multi { |transaction|
-            transaction.sadd("processes", key)
+        _, exists, _, _, msg = Sidekiq.redis do |conn|
+          conn.multi do |transaction|
+            transaction.sadd('processes', key)
             transaction.exists?(key)
-            transaction.hmset(key, "info", to_json,
-              "busy", curstate.size,
-              "beat", Time.now.to_f,
-              "rtt_us", rtt,
-              "quiet", @done,
-              "rss", kb)
+            transaction.hmset(key, 'info', to_json,
+                              'busy', curstate.size,
+                              'beat', Time.now.to_f,
+                              'rtt_us', rtt,
+                              'quiet', @done,
+                              'rss', kb)
             transaction.expire(key, 60)
             transaction.rpop("#{key}-signals")
-          }
-        }
+          end
+        end
 
         # first heartbeat or recovering from an outage and need to reestablish our heartbeat
         fire_event(:heartbeat) unless exists
@@ -181,7 +181,7 @@ module Sidekiq
         return unless msg
 
         ::Process.kill(msg, ::Process.pid)
-      rescue => e
+      rescue StandardError => e
         # ignore all redis/network issues
         logger.error("heartbeat: #{e}")
         # don't lose the counts if there was a network issue
@@ -222,20 +222,21 @@ module Sidekiq
     end
 
     MEMORY_GRABBER = case RUBY_PLATFORM
-    when /linux/
-      ->(pid) {
-        IO.readlines("/proc/#{$$}/status").each do |line|
-          next unless line.start_with?("VmRSS:")
-          break line.split[1].to_i
-        end
-      }
-    when /darwin|bsd/
-      ->(pid) {
-        `ps -o pid,rss -p #{pid}`.lines.last.split.last.to_i
-      }
-    else
-      ->(pid) { 0 }
-    end
+                     when /linux/
+                       lambda { |_pid|
+                         IO.readlines("/proc/#{$$}/status").each do |line|
+                           next unless line.start_with?('VmRSS:')
+
+                           break line.split[1].to_i
+                         end
+                       }
+                     when /darwin|bsd/
+                       lambda { |pid|
+                         `ps -o pid,rss -p #{pid}`.lines.last.split.last.to_i
+                       }
+                     else
+                       ->(_pid) { 0 }
+                     end
 
     def memory_usage(pid)
       MEMORY_GRABBER.call(pid)
@@ -243,18 +244,18 @@ module Sidekiq
 
     def to_data
       @data ||= {
-        "hostname" => hostname,
-        "started_at" => Time.now.to_f,
-        "pid" => ::Process.pid,
-        "tag" => @options[:tag] || "",
-        "concurrency" => @options[:concurrency],
-        "queues" => @options[:queues].uniq,
-        "labels" => @options[:labels],
-        "identity" => identity
+        'hostname' => hostname,
+        'started_at' => Time.now.to_f,
+        'pid' => ::Process.pid,
+        'tag' => @options[:tag] || '',
+        'concurrency' => @options[:concurrency],
+        'queues' => @options[:queues].uniq,
+        'labels' => @options[:labels],
+        'identity' => identity
       }
     end
 
-    def to_json
+    def to_json(*_args)
       # this data changes infrequently so dump it to a string
       # now so we don't need to dump it every heartbeat.
       @json ||= Sidekiq.dump_json(to_data)

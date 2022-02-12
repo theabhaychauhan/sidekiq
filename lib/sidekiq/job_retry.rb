@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require "sidekiq/scheduled"
-require "sidekiq/api"
+require 'sidekiq/scheduled'
+require 'sidekiq/api'
 
-require "zlib"
-require "base64"
+require 'zlib'
+require 'base64'
 
 module Sidekiq
   ##
@@ -79,23 +79,23 @@ module Sidekiq
     # require the worker to be instantiated.
     def global(jobstr, queue)
       yield
-    rescue Handled => ex
-      raise ex
-    rescue Sidekiq::Shutdown => ey
+    rescue Handled => e
+      raise e
+    rescue Sidekiq::Shutdown => e
       # ignore, will be pushed back onto queue during hard_shutdown
-      raise ey
+      raise e
     rescue Exception => e
       # ignore, will be pushed back onto queue during hard_shutdown
       raise Sidekiq::Shutdown if exception_caused_by_shutdown?(e)
 
       msg = Sidekiq.load_json(jobstr)
-      if msg["retry"]
+      if msg['retry']
         attempt_retry(nil, msg, queue, e)
       else
         Sidekiq.death_handlers.each do |handler|
           handler.call(msg, e)
-        rescue => handler_ex
-          handle_exception(handler_ex, {context: "Error calling death handler", job: msg})
+        rescue StandardError => handler_ex
+          handle_exception(handler_ex, { context: 'Error calling death handler', job: msg })
         end
       end
 
@@ -112,21 +112,20 @@ module Sidekiq
     # calling the handle_exception handlers.
     def local(worker, jobstr, queue)
       yield
-    rescue Handled => ex
-      raise ex
-    rescue Sidekiq::Shutdown => ey
+    rescue Handled => e
+      raise e
+    rescue Sidekiq::Shutdown => e
       # ignore, will be pushed back onto queue during hard_shutdown
-      raise ey
+      raise e
     rescue Exception => e
       # ignore, will be pushed back onto queue during hard_shutdown
       raise Sidekiq::Shutdown if exception_caused_by_shutdown?(e)
 
       msg = Sidekiq.load_json(jobstr)
-      if msg["retry"].nil?
-        msg["retry"] = worker.class.get_sidekiq_options["retry"]
-      end
+      msg['retry'] = worker.class.get_sidekiq_options['retry'] if msg['retry'].nil?
 
-      raise e unless msg["retry"]
+      raise e unless msg['retry']
+
       attempt_retry(worker, msg, queue, e)
       # We've handled this error associated with this job, don't
       # need to handle it at the global level
@@ -139,34 +138,34 @@ module Sidekiq
     # instantiate the worker instance.  All access must be guarded and
     # best effort.
     def attempt_retry(worker, msg, queue, exception)
-      max_retry_attempts = retry_attempts_from(msg["retry"], @max_retries)
+      max_retry_attempts = retry_attempts_from(msg['retry'], @max_retries)
 
-      msg["queue"] = (msg["retry_queue"] || queue)
+      msg['queue'] = (msg['retry_queue'] || queue)
 
       m = exception_message(exception)
       if m.respond_to?(:scrub!)
-        m.force_encoding("utf-8")
+        m.force_encoding('utf-8')
         m.scrub!
       end
 
-      msg["error_message"] = m
-      msg["error_class"] = exception.class.name
-      count = if msg["retry_count"]
-        msg["retried_at"] = Time.now.to_f
-        msg["retry_count"] += 1
-      else
-        msg["failed_at"] = Time.now.to_f
-        msg["retry_count"] = 0
-      end
+      msg['error_message'] = m
+      msg['error_class'] = exception.class.name
+      count = if msg['retry_count']
+                msg['retried_at'] = Time.now.to_f
+                msg['retry_count'] += 1
+              else
+                msg['failed_at'] = Time.now.to_f
+                msg['retry_count'] = 0
+              end
 
-      if msg["backtrace"]
-        lines = if msg["backtrace"] == true
-          exception.backtrace
-        else
-          exception.backtrace[0...msg["backtrace"].to_i]
-        end
+      if msg['backtrace']
+        lines = if msg['backtrace'] == true
+                  exception.backtrace
+                else
+                  exception.backtrace[0...msg['backtrace'].to_i]
+                end
 
-        msg["error_backtrace"] = compress_backtrace(lines)
+        msg['error_backtrace'] = compress_backtrace(lines)
       end
 
       if count < max_retry_attempts
@@ -176,7 +175,7 @@ module Sidekiq
         retry_at = Time.now.to_f + delay
         payload = Sidekiq.dump_json(msg)
         Sidekiq.redis do |conn|
-          conn.zadd("retry", retry_at.to_s, payload)
+          conn.zadd('retry', retry_at.to_s, payload)
         end
       else
         # Goodbye dear message, you (re)tried your best I'm sure.
@@ -188,21 +187,21 @@ module Sidekiq
       begin
         block = worker&.sidekiq_retries_exhausted_block
         block&.call(msg, exception)
-      rescue => e
-        handle_exception(e, {context: "Error calling retries_exhausted", job: msg})
+      rescue StandardError => e
+        handle_exception(e, { context: 'Error calling retries_exhausted', job: msg })
       end
 
-      send_to_morgue(msg) unless msg["dead"] == false
+      send_to_morgue(msg) unless msg['dead'] == false
 
       Sidekiq.death_handlers.each do |handler|
         handler.call(msg, exception)
-      rescue => e
-        handle_exception(e, {context: "Error calling death handler", job: msg})
+      rescue StandardError => e
+        handle_exception(e, { context: 'Error calling death handler', job: msg })
       end
     end
 
     def send_to_morgue(msg)
-      logger.info { "Adding dead #{msg["class"]} job #{msg["jid"]}" }
+      logger.info { "Adding dead #{msg['class']} job #{msg['jid']}" }
       payload = Sidekiq.dump_json(msg)
       DeadSet.new.kill(payload, notify_failure: false)
     end
@@ -227,7 +226,8 @@ module Sidekiq
     def retry_in(worker, count, exception)
       worker.sidekiq_retry_in_block.call(count, exception)
     rescue Exception => e
-      handle_exception(e, {context: "Failure scheduling retry using the defined `sidekiq_retry_in` in #{worker.class.name}, falling back to default"})
+      handle_exception(e,
+                       { context: "Failure scheduling retry using the defined `sidekiq_retry_in` in #{worker.class.name}, falling back to default" })
       nil
     end
 
@@ -248,8 +248,8 @@ module Sidekiq
       # App code can stuff all sorts of crazy binary data into the error message
       # that won't convert to JSON.
       exception.message.to_s[0, 10_000]
-    rescue
-      +"!!! ERROR MESSAGE THREW AN ERROR !!!"
+    rescue StandardError
+      +'!!! ERROR MESSAGE THREW AN ERROR !!!'
     end
 
     def compress_backtrace(backtrace)

@@ -6,15 +6,15 @@ class TestCsrf < Minitest::Test
     @session ||= {}
   end
 
-  def env(method=:get, form_hash={}, rack_session=session)
-    imp = StringIO.new("")
+  def env(method = :get, form_hash = {}, rack_session = session)
+    imp = StringIO.new('')
     {
-      "REQUEST_METHOD" => method.to_s.upcase,
-      "rack.session" => rack_session,
-      "rack.logger" => ::Logger.new(@logio ||= StringIO.new("")),
-      "rack.input" => imp,
-      "rack.request.form_input" => imp,
-      "rack.request.form_hash" => form_hash,
+      'REQUEST_METHOD' => method.to_s.upcase,
+      'rack.session' => rack_session,
+      'rack.logger' => ::Logger.new(@logio ||= StringIO.new('')),
+      'rack.input' => imp,
+      'rack.request.form_input' => imp,
+      'rack.request.form_hash' => form_hash
     }
   end
 
@@ -23,7 +23,7 @@ class TestCsrf < Minitest::Test
   end
 
   def test_get
-    ok = [200, {}, ["OK"]]
+    ok = [200, {}, ['OK']]
     first = 1
     second = 1
     result = call(env) do |envy|
@@ -48,11 +48,11 @@ class TestCsrf < Minitest::Test
 
   def test_bad_post
     result = call(env(:post)) do
-      raise "Shouldnt be called"
+      raise 'Shouldnt be called'
     end
     refute_nil result
     assert_equal 403, result[0]
-    assert_equal ["Forbidden"], result[2]
+    assert_equal ['Forbidden'], result[2]
 
     @logio.rewind
     assert_match(/attack prevented/, @logio.string)
@@ -66,20 +66,21 @@ class TestCsrf < Minitest::Test
     assert goodtoken
 
     # Make a POST with the known good token
-    result = call(env(:post, "authenticity_token" => goodtoken)) do
-      [200, {}, ["OK"]]
+    result = call(env(:post, 'authenticity_token' => goodtoken)) do
+      [200, {}, ['OK']]
     end
     refute_nil result
     assert_equal 200, result[0]
-    assert_equal ["OK"], result[2]
+    assert_equal ['OK'], result[2]
 
     # Make a POST with a known bad token
-    result = call(env(:post, "authenticity_token"=>"N0QRBD34tU61d7fi+0ZaF/35JLW/9K+8kk8dc1TZoK/0pTl7GIHap5gy7BWGsoKlzbMLRp1yaDpCDFwTJtxWAg==")) do
-      raise "shouldnt be called"
+    result = call(env(:post,
+                      'authenticity_token' => 'N0QRBD34tU61d7fi+0ZaF/35JLW/9K+8kk8dc1TZoK/0pTl7GIHap5gy7BWGsoKlzbMLRp1yaDpCDFwTJtxWAg==')) do
+      raise 'shouldnt be called'
     end
     refute_nil result
     assert_equal 403, result[0]
-    assert_equal ["Forbidden"], result[2]
+    assert_equal ['Forbidden'], result[2]
   end
 
   def test_empty_session_post
@@ -90,12 +91,12 @@ class TestCsrf < Minitest::Test
     assert goodtoken
 
     # Make a POST with an empty session data and good token
-    result = call(env(:post, { "authenticity_token" => goodtoken }, {})) do
-      raise "shouldnt be called"
+    result = call(env(:post, { 'authenticity_token' => goodtoken }, {})) do
+      raise 'shouldnt be called'
     end
     refute_nil result
     assert_equal 403, result[0]
-    assert_equal ["Forbidden"], result[2]
+    assert_equal ['Forbidden'], result[2]
   end
 
   def test_empty_csrf_session_post
@@ -105,11 +106,11 @@ class TestCsrf < Minitest::Test
     assert goodtoken
 
     # Make a POST without csrf session data and good token
-    result = call(env(:post, { "authenticity_token" => goodtoken }, { 'session_id' => 'foo' })) do
-      raise "shouldnt be called"
+    result = call(env(:post, { 'authenticity_token' => goodtoken }, { 'session_id' => 'foo' })) do
+      raise 'shouldnt be called'
     end
     refute_nil result
     assert_equal 403, result[0]
-    assert_equal ["Forbidden"], result[2]
+    assert_equal ['Forbidden'], result[2]
   end
 end

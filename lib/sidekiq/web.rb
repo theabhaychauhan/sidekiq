@@ -1,20 +1,20 @@
 # frozen_string_literal: true
 
-require "erb"
+require 'erb'
 
-require "sidekiq"
-require "sidekiq/api"
-require "sidekiq/paginator"
-require "sidekiq/web/helpers"
+require 'sidekiq'
+require 'sidekiq/api'
+require 'sidekiq/paginator'
+require 'sidekiq/web/helpers'
 
-require "sidekiq/web/router"
-require "sidekiq/web/action"
-require "sidekiq/web/application"
-require "sidekiq/web/csrf_protection"
+require 'sidekiq/web/router'
+require 'sidekiq/web/action'
+require 'sidekiq/web/application'
+require 'sidekiq/web/csrf_protection'
 
-require "rack/content_length"
-require "rack/builder"
-require "rack/static"
+require 'rack/content_length'
+require 'rack/builder'
+require 'rack/static'
 
 module Sidekiq
   class Web
@@ -25,12 +25,12 @@ module Sidekiq
     ASSETS = "#{ROOT}/assets"
 
     DEFAULT_TABS = {
-      "Dashboard" => "",
-      "Busy" => "busy",
-      "Queues" => "queues",
-      "Retries" => "retries",
-      "Scheduled" => "scheduled",
-      "Dead" => "morgue"
+      'Dashboard' => '',
+      'Busy' => 'busy',
+      'Queues' => 'queues',
+      'Retries' => 'retries',
+      'Scheduled' => 'scheduled',
+      'Dead' => 'morgue'
     }
 
     class << self
@@ -45,7 +45,7 @@ module Sidekiq
       def custom_tabs
         @custom_tabs ||= {}
       end
-      alias_method :tabs, :custom_tabs
+      alias tabs custom_tabs
 
       def locales
         @locales ||= LOCALES
@@ -75,11 +75,11 @@ module Sidekiq
         send(:"#{attribute}=", value)
       end
 
-      def sessions=(val)
+      def sessions=(_val)
         puts "WARNING: Sidekiq::Web.sessions= is no longer relevant and will be removed in Sidekiq 7.0. #{caller(1..1).first}"
       end
 
-      def session_secret=(val)
+      def session_secret=(_val)
         puts "WARNING: Sidekiq::Web.session_secret= is no longer relevant and will be removed in Sidekiq 7.0. #{caller(1..1).first}"
       end
 
@@ -129,7 +129,7 @@ module Sidekiq
       send(:"#{attribute}=", value)
     end
 
-    def sessions=(val)
+    def sessions=(_val)
       puts "Sidekiq::Web#sessions= is no longer relevant and will be removed in Sidekiq 7.0. #{caller[2..2].first}"
     end
 
@@ -144,13 +144,13 @@ module Sidekiq
       m = middlewares
 
       rules = []
-      rules = [[:all, {"Cache-Control" => "public, max-age=86400"}]] unless ENV["SIDEKIQ_WEB_TESTING"]
+      rules = [[:all, { 'Cache-Control' => 'public, max-age=86400' }]] unless ENV['SIDEKIQ_WEB_TESTING']
 
       ::Rack::Builder.new do
-        use Rack::Static, urls: ["/stylesheets", "/images", "/javascripts"],
-          root: ASSETS,
-          cascade: true,
-          header_rules: rules
+        use Rack::Static, urls: ['/stylesheets', '/images', '/javascripts'],
+                          root: ASSETS,
+                          cascade: true,
+                          header_rules: rules
         m.each { |middleware, block| use(*middleware, &block) }
         use Sidekiq::Web::CsrfProtection unless $TESTING
         run WebApplication.new(klass)

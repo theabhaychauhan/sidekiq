@@ -144,8 +144,6 @@ module Sidekiq
       end
     end
 
-    private
-
     class Entry
       attr_reader :klass
 

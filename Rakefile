@@ -1,10 +1,10 @@
-require "bundler/gem_tasks"
-require "rake/testtask"
-require "standard/rake"
+require 'bundler/gem_tasks'
+require 'rake/testtask'
+require 'standard/rake'
 
 Rake::TestTask.new(:test) do |test|
   test.warning = true
-  test.pattern = "test/**/test_*.rb"
+  test.pattern = 'test/**/test_*.rb'
 end
 
-task default: [:standard, :test]
+task default: %i[standard test]

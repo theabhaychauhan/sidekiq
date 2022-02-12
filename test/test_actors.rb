@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/cli'
 require 'sidekiq/fetch'
@@ -9,14 +10,15 @@ describe 'Actors' do
   class JoeWorker
     include Sidekiq::Worker
     def perform(slp)
-      raise "boom" if slp == "boom"
+      raise 'boom' if slp == 'boom'
+
       sleep(slp) if slp > 0
       $count += 1
     end
   end
 
   before do
-    Sidekiq.redis {|c| c.flushdb}
+    Sidekiq.redis { |c| c.flushdb }
   end
 
   describe 'scheduler' do
@@ -56,26 +58,28 @@ describe 'Actors' do
     end
 
     class Mgr
-      attr_reader :latest_error
-      attr_reader :mutex
-      attr_reader :cond
+      attr_reader :latest_error, :mutex, :cond
+
       def initialize
         @mutex = ::Mutex.new
         @cond = ::ConditionVariable.new
       end
-      def processor_died(inst, err)
+
+      def processor_died(_inst, err)
         @latest_error = err
         @mutex.synchronize do
           @cond.signal
         end
       end
-      def processor_stopped(inst)
+
+      def processor_stopped(_inst)
         @mutex.synchronize do
           @cond.signal
         end
       end
+
       def options
-        opts = { :concurrency => 3, :queues => ['default'] }
+        opts = { concurrency: 3, queues: ['default'] }
         opts[:fetch] = Sidekiq::BasicFetch.new(opts)
         opts
       end
@@ -97,7 +101,7 @@ describe 'Actors' do
       mgr = Mgr.new
 
       p = Sidekiq::Processor.new(mgr, mgr.options)
-      JoeWorker.perform_async("boom")
+      JoeWorker.perform_async('boom')
       q = Sidekiq::Queue.new
       assert_equal 1, q.size
 

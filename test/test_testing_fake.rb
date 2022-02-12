@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 
 describe 'Sidekiq::Testing.fake' do
@@ -69,8 +70,7 @@ describe 'Sidekiq::Testing.fake' do
     end
 
     class Something
-      def self.foo(x)
-      end
+      def self.foo(x); end
     end
 
     it 'stubs the delay call on classes' do
@@ -123,7 +123,8 @@ describe 'Sidekiq::Testing.fake' do
     sidekiq_class_attribute :count
     self.count = 0
     def perform(worker_jid)
-      return unless worker_jid == self.jid
+      return unless worker_jid == jid
+
       self.class.count += 1
     end
   end
@@ -131,11 +132,11 @@ describe 'Sidekiq::Testing.fake' do
   it 'execute only jobs with assigned JID' do
     4.times do |i|
       jid = SpecificJidWorker.perform_async(nil)
-      if i % 2 == 0
-        SpecificJidWorker.jobs[-1]["args"] = ["wrong_jid"]
-      else
-        SpecificJidWorker.jobs[-1]["args"] = [jid]
-      end
+      SpecificJidWorker.jobs[-1]['args'] = if i.even?
+                                             ['wrong_jid']
+                                           else
+                                             [jid]
+                                           end
     end
 
     SpecificJidWorker.perform_one
@@ -151,7 +152,7 @@ describe 'Sidekiq::Testing.fake' do
   it 'round trip serializes the job arguments' do
     assert StoredWorker.perform_async(:mike)
     job = StoredWorker.jobs.first
-    assert_equal "mike", job['args'].first
+    assert_equal 'mike', job['args'].first
     StoredWorker.clear
   end
 
@@ -274,7 +275,7 @@ describe 'Sidekiq::Testing.fake' do
   it 'drains jobs of workers with symbolized queue names' do
     Sidekiq::Worker.jobs.clear
 
-    AltQueueWorker.perform_async(5,6)
+    AltQueueWorker.perform_async(5, 6)
     assert_equal 1, AltQueueWorker.jobs.size
 
     Sidekiq::Worker.drain_all
@@ -312,20 +313,20 @@ describe 'Sidekiq::Testing.fake' do
     end
 
     it 'finds enqueued jobs' do
-      assert_equal 0, Sidekiq::Queues["default"].size
+      assert_equal 0, Sidekiq::Queues['default'].size
 
       QueueWorker.perform_async(1, 2)
       QueueWorker.perform_async(1, 2)
       AltQueueWorker.perform_async(1, 2)
 
-      assert_equal 2, Sidekiq::Queues["default"].size
-      assert_equal [1, 2], Sidekiq::Queues["default"].first["args"]
+      assert_equal 2, Sidekiq::Queues['default'].size
+      assert_equal [1, 2], Sidekiq::Queues['default'].first['args']
 
-      assert_equal 1, Sidekiq::Queues["alt"].size
+      assert_equal 1, Sidekiq::Queues['alt'].size
     end
 
     it 'clears out all queues' do
-      assert_equal 0, Sidekiq::Queues["default"].size
+      assert_equal 0, Sidekiq::Queues['default'].size
 
       QueueWorker.perform_async(1, 2)
       QueueWorker.perform_async(1, 2)
@@ -333,9 +334,9 @@ describe 'Sidekiq::Testing.fake' do
 
       Sidekiq::Queues.clear_all
 
-      assert_equal 0, Sidekiq::Queues["default"].size
+      assert_equal 0, Sidekiq::Queues['default'].size
       assert_equal 0, QueueWorker.jobs.size
-      assert_equal 0, Sidekiq::Queues["alt"].size
+      assert_equal 0, Sidekiq::Queues['alt'].size
       assert_equal 0, AltQueueWorker.jobs.size
     end
 
@@ -346,7 +347,7 @@ describe 'Sidekiq::Testing.fake' do
         'args' => [1]
       )
 
-      assert_equal 1, Sidekiq::Queues["missing"].size
+      assert_equal 1, Sidekiq::Queues['missing'].size
     end
 
     it 'respects underlying array changes' do

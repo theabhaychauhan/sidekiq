@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "sidekiq/extensions/generic_proxy"
+require 'sidekiq/extensions/generic_proxy'
 
 module Sidekiq
   module Extensions
@@ -27,17 +27,17 @@ module Sidekiq
       end
 
       def sidekiq_delay_for(interval, options = {})
-        Proxy.new(DelayedClass, self, options.merge("at" => Time.now.to_f + interval.to_f))
+        Proxy.new(DelayedClass, self, options.merge('at' => Time.now.to_f + interval.to_f))
       end
 
       def sidekiq_delay_until(timestamp, options = {})
-        Proxy.new(DelayedClass, self, options.merge("at" => timestamp.to_f))
+        Proxy.new(DelayedClass, self, options.merge('at' => timestamp.to_f))
       end
-      alias_method :delay, :sidekiq_delay
-      alias_method :delay_for, :sidekiq_delay_for
-      alias_method :delay_until, :sidekiq_delay_until
+      alias delay sidekiq_delay
+      alias delay_for sidekiq_delay_for
+      alias delay_until sidekiq_delay_until
     end
   end
 end
 
-Module.__send__(:include, Sidekiq::Extensions::Klass) unless defined?(::Rails)
+Module.include Sidekiq::Extensions::Klass unless defined?(::Rails)

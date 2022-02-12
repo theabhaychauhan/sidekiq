@@ -83,7 +83,7 @@ describe Sidekiq::CLI do
             it 'accepts queues without weights' do
               subject.parse(%w[sidekiq -q foo -q bar -r ./test/fake_env.rb])
 
-              assert_equal ['foo', 'bar'], Sidekiq.options[:queues]
+              assert_equal %w[foo bar], Sidekiq.options[:queues]
             end
 
             it 'sets strictly ordered queues' do
@@ -97,7 +97,7 @@ describe Sidekiq::CLI do
             it 'accepts queues with weights' do
               subject.parse(%w[sidekiq -q foo,3 -q bar -r ./test/fake_env.rb])
 
-              assert_equal ['foo', 'foo', 'foo', 'bar'], Sidekiq.options[:queues]
+              assert_equal %w[foo foo foo bar], Sidekiq.options[:queues]
             end
 
             it 'does not set strictly ordered queues' do
@@ -110,7 +110,7 @@ describe Sidekiq::CLI do
           it 'accepts queues with multi-word names' do
             subject.parse(%w[sidekiq -q queue_one -q queue-two -r ./test/fake_env.rb])
 
-            assert_equal ['queue_one', 'queue-two'], Sidekiq.options[:queues]
+            assert_equal %w[queue_one queue-two], Sidekiq.options[:queues]
           end
 
           it 'accepts queues with dots in the name' do
@@ -266,11 +266,11 @@ describe Sidekiq::CLI do
           describe 'when config file and flags' do
             it 'merges options' do
               subject.parse(%w[sidekiq -C ./test/config.yml
-                                    -e snoop
-                                    -c 100
-                                    -r ./test/fake_env.rb
-                                    -q often,7
-                                    -q seldom,3])
+                               -e snoop
+                               -c 100
+                               -r ./test/fake_env.rb
+                               -q often,7
+                               -q seldom,3])
 
               assert_equal './test/config.yml', Sidekiq.options[:config_file]
               refute Sidekiq.options[:verbose]
@@ -285,8 +285,8 @@ describe Sidekiq::CLI do
               describe 'when -q specifies queues without weights' do
                 it 'sets strictly ordered queues' do
                   subject.parse(%w[sidekiq -C ./test/config.yml
-                                        -r ./test/fake_env.rb
-                                        -q foo -q bar])
+                                   -r ./test/fake_env.rb
+                                   -q foo -q bar])
 
                   assert_equal true, !!Sidekiq.options[:strict]
                 end
@@ -295,7 +295,7 @@ describe Sidekiq::CLI do
               describe 'when -q specifies no queues' do
                 it 'does not set strictly ordered queues' do
                   subject.parse(%w[sidekiq -C ./test/config.yml
-                                        -r ./test/fake_env.rb])
+                                   -r ./test/fake_env.rb])
 
                   assert_equal false, !!Sidekiq.options[:strict]
                 end
@@ -304,8 +304,8 @@ describe Sidekiq::CLI do
               describe 'when -q specifies queues with weights' do
                 it 'does not set strictly ordered queues' do
                   subject.parse(%w[sidekiq -C ./test/config.yml
-                                        -r ./test/fake_env.rb
-                                        -q foo,2 -q bar,3])
+                                   -r ./test/fake_env.rb
+                                   -q foo,2 -q bar,3])
 
                   assert_equal false, !!Sidekiq.options[:strict]
                 end
@@ -316,8 +316,8 @@ describe Sidekiq::CLI do
               describe 'when -q specifies queues without weights' do
                 it 'sets strictly ordered queues' do
                   subject.parse(%w[sidekiq -C ./test/config_queues_without_weights.yml
-                                        -r ./test/fake_env.rb
-                                        -q foo -q bar])
+                                   -r ./test/fake_env.rb
+                                   -q foo -q bar])
 
                   assert_equal true, !!Sidekiq.options[:strict]
                 end
@@ -326,7 +326,7 @@ describe Sidekiq::CLI do
               describe 'when -q specifies no queues' do
                 it 'sets strictly ordered queues' do
                   subject.parse(%w[sidekiq -C ./test/config_queues_without_weights.yml
-                                        -r ./test/fake_env.rb])
+                                   -r ./test/fake_env.rb])
 
                   assert_equal true, !!Sidekiq.options[:strict]
                 end
@@ -335,8 +335,8 @@ describe Sidekiq::CLI do
               describe 'when -q specifies queues with weights' do
                 it 'does not set strictly ordered queues' do
                   subject.parse(%w[sidekiq -C ./test/config_queues_without_weights.yml
-                                        -r ./test/fake_env.rb
-                                        -q foo,2 -q bar,3])
+                                   -r ./test/fake_env.rb
+                                   -q foo,2 -q bar,3])
 
                   assert_equal false, !!Sidekiq.options[:strict]
                 end
@@ -347,8 +347,8 @@ describe Sidekiq::CLI do
               describe 'when -q specifies queues without weights' do
                 it 'sets strictly ordered queues' do
                   subject.parse(%w[sidekiq -C ./test/config_empty.yml
-                                        -r ./test/fake_env.rb
-                                        -q foo -q bar])
+                                   -r ./test/fake_env.rb
+                                   -q foo -q bar])
 
                   assert_equal true, !!Sidekiq.options[:strict]
                 end
@@ -357,7 +357,7 @@ describe Sidekiq::CLI do
               describe 'when -q specifies no queues' do
                 it 'sets strictly ordered queues' do
                   subject.parse(%w[sidekiq -C ./test/config_empty.yml
-                                        -r ./test/fake_env.rb])
+                                   -r ./test/fake_env.rb])
 
                   assert_equal true, !!Sidekiq.options[:strict]
                 end
@@ -366,8 +366,8 @@ describe Sidekiq::CLI do
               describe 'when -q specifies queues with weights' do
                 it 'does not set strictly ordered queues' do
                   subject.parse(%w[sidekiq -C ./test/config_empty.yml
-                                        -r ./test/fake_env.rb
-                                        -q foo,2 -q bar,3])
+                                   -r ./test/fake_env.rb
+                                   -q foo,2 -q bar,3])
 
                   assert_equal false, !!Sidekiq.options[:strict]
                 end
@@ -486,7 +486,7 @@ describe Sidekiq::CLI do
               subject.run
             end
 
-            assert $LOADED_FEATURES.any? { |x| x =~ /test\/fake_env/ }
+            assert $LOADED_FEATURES.any? { |x| x =~ %r{test/fake_env} }
           end
         end
       end
@@ -516,7 +516,7 @@ describe Sidekiq::CLI do
 
       describe 'checking maxmemory policy' do
         it 'warns if the policy is not noeviction' do
-          redis_info = { "maxmemory_policy" => "allkeys-lru", "redis_version" => "6" }
+          redis_info = { 'maxmemory_policy' => 'allkeys-lru', 'redis_version' => '6' }
 
           Sidekiq.stub(:redis_info, redis_info) do
             subject.stub(:launch, nil) do
@@ -524,11 +524,11 @@ describe Sidekiq::CLI do
             end
           end
 
-          assert_includes @logdev.string, "allkeys-lru"
+          assert_includes @logdev.string, 'allkeys-lru'
         end
 
         it 'silent if the policy is noeviction' do
-          redis_info = { "maxmemory_policy" => "noeviction", "redis_version" => "6" }
+          redis_info = { 'maxmemory_policy' => 'noeviction', 'redis_version' => '6' }
 
           Sidekiq.stub(:redis_info, redis_info) do
             subject.stub(:launch, nil) do
@@ -536,13 +536,13 @@ describe Sidekiq::CLI do
             end
           end
 
-          refute_includes @logdev.string, "noeviction"
+          refute_includes @logdev.string, 'noeviction'
         end
       end
     end
 
     describe 'signal handling' do
-      %w(INT TERM).each do |sig|
+      %w[INT TERM].each do |sig|
         describe sig do
           it 'raises interrupt error' do
             assert_raises Interrupt do
@@ -552,7 +552,7 @@ describe Sidekiq::CLI do
         end
       end
 
-      describe "TSTP" do
+      describe 'TSTP' do
         it 'quiets with a corresponding event' do
           quiet = false
 
@@ -561,7 +561,7 @@ describe Sidekiq::CLI do
           end
 
           subject.launcher = Sidekiq::Launcher.new(Sidekiq.options)
-          subject.handle_signal("TSTP")
+          subject.handle_signal('TSTP')
 
           assert_match(/Got TSTP signal/, logdev.string)
           assert_equal true, quiet

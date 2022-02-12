@@ -8,17 +8,17 @@ require 'minitest/autorun'
 
 $TESTING = true
 # disable minitest/parallel threads
-ENV["MT_CPU"] = "0"
-ENV["N"] = "0"
+ENV['MT_CPU'] = '0'
+ENV['N'] = '0'
 # Disable any stupid backtrace cleansers
-ENV["BACKTRACE"] = "1"
+ENV['BACKTRACE'] = '1'
 
-if ENV["COVERAGE"]
+if ENV['COVERAGE']
   require 'simplecov'
   SimpleCov.start do
     enable_coverage :branch
-    add_filter "/test/"
-    add_filter "/myapp/"
+    add_filter '/test/'
+    add_filter '/myapp/'
   end
   if ENV['CI']
     require 'codecov'
@@ -31,7 +31,7 @@ ENV['REDIS_URL'] ||= 'redis://localhost/15'
 Sidekiq.logger = ::Logger.new(STDOUT)
 Sidekiq.logger.level = Logger::ERROR
 
-def capture_logging(lvl=Logger::INFO)
+def capture_logging(lvl = Logger::INFO)
   old = Sidekiq.logger
   begin
     out = StringIO.new

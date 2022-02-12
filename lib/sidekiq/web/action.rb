@@ -2,7 +2,7 @@
 
 module Sidekiq
   class WebAction
-    RACK_SESSION = "rack.session"
+    RACK_SESSION = 'rack.session'
 
     attr_accessor :env, :block, :type
 
@@ -15,15 +15,15 @@ module Sidekiq
     end
 
     def halt(res)
-      throw :halt, [res, {"Content-Type" => "text/plain"}, [res.to_s]]
+      throw :halt, [res, { 'Content-Type' => 'text/plain' }, [res.to_s]]
     end
 
     def redirect(location)
-      throw :halt, [302, {"Location" => "#{request.base_url}#{location}"}, []]
+      throw :halt, [302, { 'Location' => "#{request.base_url}#{location}" }, []]
     end
 
     def params
-      indifferent_hash = Hash.new { |hash, key| hash[key.to_s] if Symbol === key }
+      indifferent_hash = Hash.new { |hash, key| hash[key.to_s] if key.is_a?(Symbol) }
 
       indifferent_hash.merge! request.params
       route_params.each { |k, v| indifferent_hash[k.to_s] = v }
@@ -40,15 +40,13 @@ module Sidekiq
     end
 
     def erb(content, options = {})
-      if content.is_a? Symbol
-        unless respond_to?(:"_erb_#{content}")
-          src = ERB.new(File.read("#{Web.settings.views}/#{content}.erb")).src
-          WebAction.class_eval <<-RUBY, __FILE__, __LINE__ + 1
+      if content.is_a? Symbol && !respond_to?(:"_erb_#{content}")
+        src = ERB.new(File.read("#{Web.settings.views}/#{content}.erb")).src
+        WebAction.class_eval <<-RUBY, __FILE__, __LINE__ + 1
             def _erb_#{content}
               #{src}
             end
-          RUBY
-        end
+        RUBY
       end
 
       if @_erb
@@ -62,13 +60,14 @@ module Sidekiq
     end
 
     def render(engine, content, options = {})
-      raise "Only erb templates are supported" if engine != :erb
+      raise 'Only erb templates are supported' if engine != :erb
 
       erb(content, options)
     end
 
     def json(payload)
-      [200, {"Content-Type" => "application/json", "Cache-Control" => "private, no-store"}, [Sidekiq.dump_json(payload)]]
+      [200, { 'Content-Type' => 'application/json', 'Cache-Control' => 'private, no-store' },
+       [Sidekiq.dump_json(payload)]]
     end
 
     def initialize(env, block)

@@ -1,17 +1,17 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/scheduled'
 
 describe Sidekiq::Scheduled do
   class ScheduledWorker
     include Sidekiq::Worker
-    def perform(x)
-    end
+    def perform(x); end
   end
 
   describe 'poller' do
     before do
-      Sidekiq.redis{|c| c.flushdb}
+      Sidekiq.redis { |c| c.flushdb }
       @error_1  = { 'class' => ScheduledWorker.name, 'args' => [0], 'queue' => 'queue_1' }
       @error_2  = { 'class' => ScheduledWorker.name, 'args' => [1], 'queue' => 'queue_2' }
       @error_3  = { 'class' => ScheduledWorker.name, 'args' => [2], 'queue' => 'queue_3' }
@@ -25,7 +25,7 @@ describe Sidekiq::Scheduled do
     end
 
     class MyStopper
-      def call(worker_class, job, queue, r)
+      def call(_worker_class, job, _queue, _r)
         yield if job['args'].first.odd?
       end
     end
@@ -40,10 +40,10 @@ describe Sidekiq::Scheduled do
 
         @poller.enqueue
 
-        assert_equal 0, Sidekiq::Queue.new("queue_1").size
-        assert_equal 1, Sidekiq::Queue.new("queue_2").size
-        assert_equal 0, Sidekiq::Queue.new("queue_5").size
-        assert_equal 1, Sidekiq::Queue.new("queue_6").size
+        assert_equal 0, Sidekiq::Queue.new('queue_1').size
+        assert_equal 1, Sidekiq::Queue.new('queue_2').size
+        assert_equal 0, Sidekiq::Queue.new('queue_5').size
+        assert_equal 1, Sidekiq::Queue.new('queue_6').size
       ensure
         Sidekiq.client_middleware.remove MyStopper
       end
@@ -66,7 +66,7 @@ describe Sidekiq::Scheduled do
         @poller.enqueue
 
         Sidekiq.redis do |conn|
-          %w(queue:queue_1 queue:queue_2 queue:queue_4 queue:queue_5).each do |queue_name|
+          %w[queue:queue_1 queue:queue_2 queue:queue_4 queue:queue_5].each do |queue_name|
             assert_equal 1, conn.llen(queue_name)
             job = Sidekiq.load_json(conn.lrange(queue_name, 0, -1)[0])
             assert_equal enqueued_time.to_f, job['enqueued_at']
@@ -93,7 +93,7 @@ describe Sidekiq::Scheduled do
         @poller.enqueue
 
         Sidekiq.redis do |conn|
-          %w(queue:queue_1 queue:queue_4).each do |queue_name|
+          %w[queue:queue_1 queue:queue_4].each do |queue_name|
             assert_equal 0, conn.llen(queue_name)
           end
         end
@@ -104,7 +104,8 @@ describe Sidekiq::Scheduled do
     end
 
     def with_sidekiq_option(name, value)
-      _original, Sidekiq.options[name] = Sidekiq.options[name], value
+      _original = Sidekiq.options[name]
+      Sidekiq.options[name] = value
       begin
         yield
       ensure
@@ -115,10 +116,10 @@ describe Sidekiq::Scheduled do
     it 'generates random intervals that target a configured average' do
       with_sidekiq_option(:poll_interval_average, 10) do
         i = 500
-        intervals = Array.new(i){ @poller.send(:random_poll_interval) }
+        intervals = Array.new(i) { @poller.send(:random_poll_interval) }
 
-        assert intervals.all?{|x| x >= 5}
-        assert intervals.all?{|x| x <= 15}
+        assert intervals.all? { |x| x >= 5 }
+        assert intervals.all? { |x| x <= 15 }
         assert_in_delta 10, intervals.sum.to_f / i, 0.5
       end
     end
@@ -127,8 +128,8 @@ describe Sidekiq::Scheduled do
       with_sidekiq_option(:average_scheduled_poll_interval, 10) do
         3.times do |i|
           Sidekiq.redis do |conn|
-            conn.sadd("processes", "process-#{i}")
-            conn.hset("process-#{i}", "info", nil)
+            conn.sadd('processes', "process-#{i}")
+            conn.hset("process-#{i}", 'info', nil)
           end
         end
 

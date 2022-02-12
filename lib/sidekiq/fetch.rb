@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "sidekiq"
+require 'sidekiq'
 
 module Sidekiq
   class BasicFetch
@@ -8,13 +8,13 @@ module Sidekiq
     # can check if the process is shutting down.
     TIMEOUT = 2
 
-    UnitOfWork = Struct.new(:queue, :job) {
+    UnitOfWork = Struct.new(:queue, :job) do
       def acknowledge
         # nothing to do
       end
 
       def queue_name
-        queue.delete_prefix("queue:")
+        queue.delete_prefix('queue:')
       end
 
       def requeue
@@ -22,10 +22,11 @@ module Sidekiq
           conn.rpush(queue, job)
         end
       end
-    }
+    end
 
     def initialize(options)
-      raise ArgumentError, "missing queue list" unless options[:queues]
+      raise ArgumentError, 'missing queue list' unless options[:queues]
+
       @options = options
       @strictly_ordered_queues = !!@options[:strict]
       @queues = @options[:queues].map { |q| "queue:#{q}" }
@@ -48,10 +49,10 @@ module Sidekiq
       UnitOfWork.new(*work) if work
     end
 
-    def bulk_requeue(inprogress, options)
+    def bulk_requeue(inprogress, _options)
       return if inprogress.empty?
 
-      Sidekiq.logger.debug { "Re-queueing terminated jobs" }
+      Sidekiq.logger.debug { 'Re-queueing terminated jobs' }
       jobs_to_requeue = {}
       inprogress.each do |unit_of_work|
         jobs_to_requeue[unit_of_work.queue] ||= []
@@ -66,8 +67,8 @@ module Sidekiq
         end
       end
       Sidekiq.logger.info("Pushed #{inprogress.size} jobs back to Redis")
-    rescue => ex
-      Sidekiq.logger.warn("Failed to requeue #{inprogress.size} jobs: #{ex.message}")
+    rescue StandardError => e
+      Sidekiq.logger.warn("Failed to requeue #{inprogress.size} jobs: #{e.message}")
     end
 
     # Creating the Redis#brpop command takes into account any

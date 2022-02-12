@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require_relative 'dummy/config/environment'
 require 'rails/generators/test_case'
@@ -6,7 +7,7 @@ require 'generators/sidekiq/job_generator'
 
 class JobGeneratorTest < Rails::Generators::TestCase
   tests Sidekiq::Generators::JobGenerator
-  destination File.expand_path('../../tmp', __FILE__)
+  destination File.expand_path('../tmp', __dir__)
   setup :prepare_destination
 
   test 'all files are properly created' do

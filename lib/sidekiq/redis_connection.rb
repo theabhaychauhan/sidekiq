@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "connection_pool"
-require "redis"
-require "uri"
+require 'connection_pool'
+require 'redis'
+require 'uri'
 
 module Sidekiq
   class RedisConnection
@@ -15,16 +15,16 @@ module Sidekiq
         end
 
         size = if symbolized_options[:size]
-          symbolized_options[:size]
-        elsif Sidekiq.server?
-          # Give ourselves plenty of connections.  pool is lazy
-          # so we won't create them until we need them.
-          Sidekiq.options[:concurrency] + 5
-        elsif ENV["RAILS_MAX_THREADS"]
-          Integer(ENV["RAILS_MAX_THREADS"])
-        else
-          5
-        end
+                 symbolized_options[:size]
+               elsif Sidekiq.server?
+                 # Give ourselves plenty of connections.  pool is lazy
+                 # so we won't create them until we need them.
+                 Sidekiq.options[:concurrency] + 5
+               elsif ENV['RAILS_MAX_THREADS']
+                 Integer(ENV['RAILS_MAX_THREADS'])
+               else
+                 5
+               end
 
         verify_sizing(size, Sidekiq.options[:concurrency]) if Sidekiq.server?
 
@@ -47,7 +47,10 @@ module Sidekiq
       #   - enterprise's leader election
       #   - enterprise's cron support
       def verify_sizing(size, concurrency)
-        raise ArgumentError, "Your Redis connection pool is too small for Sidekiq to work. Your pool has #{size} connections but must have at least #{concurrency + 2}" if size < (concurrency + 2)
+        if size < (concurrency + 2)
+          raise ArgumentError,
+                "Your Redis connection pool is too small for Sidekiq to work. Your pool has #{size} connections but must have at least #{concurrency + 2}"
+        end
       end
 
       def build_client(options)
@@ -56,11 +59,11 @@ module Sidekiq
         client = Redis.new client_opts(options)
         if namespace
           begin
-            require "redis/namespace"
+            require 'redis/namespace'
             Redis::Namespace.new(namespace, redis: client)
           rescue LoadError
             Sidekiq.logger.error("Your Redis configuration uses the namespace '#{namespace}' but the redis-namespace gem is not included in the Gemfile." \
-                                 "Add the gem to your Gemfile to continue using a namespace. Otherwise, remove the namespace parameter.")
+                                 'Add the gem to your Gemfile to continue using a namespace. Otherwise, remove the namespace parameter.')
             exit(-127)
           end
         else
@@ -70,16 +73,14 @@ module Sidekiq
 
       def client_opts(options)
         opts = options.dup
-        if opts[:namespace]
-          opts.delete(:namespace)
-        end
+        opts.delete(:namespace) if opts[:namespace]
 
         if opts[:network_timeout]
           opts[:timeout] = opts[:network_timeout]
           opts.delete(:network_timeout)
         end
 
-        opts[:driver] ||= Redis::Connection.drivers.last || "ruby"
+        opts[:driver] ||= Redis::Connection.drivers.last || 'ruby'
 
         # Issue #3303, redis-rb will silently retry an operation.
         # This can lead to duplicate jobs if Sidekiq::Client's LPUSH
@@ -92,20 +93,18 @@ module Sidekiq
       end
 
       def log_info(options)
-        redacted = "REDACTED"
+        redacted = 'REDACTED'
 
         # Deep clone so we can muck with these options all we want and exclude
         # params from dump-and-load that may contain objects that Marshal is
         # unable to safely dump.
-        keys = options.keys - [:logger, :ssl_params]
+        keys = options.keys - %i[logger ssl_params]
         scrubbed_options = Marshal.load(Marshal.dump(options.slice(*keys)))
         if scrubbed_options[:url] && (uri = URI.parse(scrubbed_options[:url])) && uri.password
           uri.password = redacted
           scrubbed_options[:url] = uri.to_s
         end
-        if scrubbed_options[:password]
-          scrubbed_options[:password] = redacted
-        end
+        scrubbed_options[:password] = redacted if scrubbed_options[:password]
         scrubbed_options[:sentinels]&.each do |sentinel|
           sentinel[:password] = redacted if sentinel[:password]
         end
@@ -124,7 +123,7 @@ module Sidekiq
         # and Sidekiq will find your custom URL variable with no custom
         # initialization code at all.
         #
-        p = ENV["REDIS_PROVIDER"]
+        p = ENV['REDIS_PROVIDER']
         if p && p =~ /:/
           raise <<~EOM
             REDIS_PROVIDER should be set to the name of the variable which contains the Redis URL, not a URL itself.
@@ -136,7 +135,7 @@ module Sidekiq
         end
 
         ENV[
-          p || "REDIS_URL"
+          p || 'REDIS_URL'
         ]
       end
     end

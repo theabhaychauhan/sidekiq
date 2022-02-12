@@ -24,12 +24,10 @@ class TestLogger < Minitest::Test
   end
 
   def test_heroku_log_formatter
-    begin
-      ENV['DYNO'] = 'dyno identifier'
-      assert_kind_of Sidekiq::Logger::Formatters::WithoutTimestamp, Sidekiq::Logger.new(@output).formatter
-    ensure
-      ENV['DYNO'] = nil
-    end
+    ENV['DYNO'] = 'dyno identifier'
+    assert_kind_of Sidekiq::Logger::Formatters::WithoutTimestamp, Sidekiq::Logger.new(@output).formatter
+  ensure
+    ENV['DYNO'] = nil
   end
 
   def test_json_log_formatter
@@ -79,17 +77,17 @@ class TestLogger < Minitest::Test
   end
 
   def test_formatted_output
-    @logger.info("hello world")
+    @logger.info('hello world')
     assert_match(/INFO: hello world/, @output.string)
     reset(@output)
 
-    formats = [ Sidekiq::Logger::Formatters::Pretty,
-                Sidekiq::Logger::Formatters::WithoutTimestamp,
-                Sidekiq::Logger::Formatters::JSON, ]
+    formats = [Sidekiq::Logger::Formatters::Pretty,
+               Sidekiq::Logger::Formatters::WithoutTimestamp,
+               Sidekiq::Logger::Formatters::JSON]
     formats.each do |fmt|
       @logger.formatter = fmt.new
       Sidekiq::Context.with(class: 'HaikuWorker', bid: 'b-1234abc') do
-        @logger.info("hello context")
+        @logger.info('hello context')
       end
       assert_match(/INFO/, @output.string)
       assert_match(/hello context/, @output.string)
@@ -101,23 +99,23 @@ class TestLogger < Minitest::Test
   def test_json_output_is_parsable
     @logger.formatter = Sidekiq::Logger::Formatters::JSON.new
 
-    @logger.debug("boom")
+    @logger.debug('boom')
     Sidekiq::Context.with(class: 'HaikuWorker', jid: '1234abc') do
-      @logger.info("json format")
+      @logger.info('json format')
     end
     a, b = @output.string.lines
     hash = JSON.parse(a)
     keys = hash.keys.sort
-    assert_equal ["lvl", "msg", "pid", "tid", "ts"], keys
-    assert_nil hash["ctx"]
-    assert_equal hash["lvl"], "DEBUG"
+    assert_equal %w[lvl msg pid tid ts], keys
+    assert_nil hash['ctx']
+    assert_equal hash['lvl'], 'DEBUG'
 
     hash = JSON.parse(b)
     keys = hash.keys.sort
-    assert_equal ["ctx", "lvl", "msg", "pid", "tid", "ts"], keys
-    refute_nil hash["ctx"]
-    assert_equal "1234abc", hash["ctx"]["jid"]
-    assert_equal "INFO", hash["lvl"]
+    assert_equal %w[ctx lvl msg pid tid ts], keys
+    refute_nil hash['ctx']
+    assert_equal '1234abc', hash['ctx']['jid']
+    assert_equal 'INFO', hash['lvl']
   end
 
   def test_forwards_logger_kwargs

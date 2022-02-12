@@ -4,14 +4,14 @@
 # RUBYOPT=-w bundle exec sidekiq
 $TESTING = false
 
-require_relative "../lib/sidekiq/cli"
+require_relative '../lib/sidekiq/cli'
 
 def integrate_with_systemd
-  return unless ENV["NOTIFY_SOCKET"]
+  return unless ENV['NOTIFY_SOCKET']
 
   Sidekiq.configure_server do |config|
-    Sidekiq.logger.info "Enabling systemd notification integration"
-    require "sidekiq/sd_notify"
+    Sidekiq.logger.info 'Enabling systemd notification integration'
+    require 'sidekiq/sd_notify'
     config.on(:startup) do
       Sidekiq::SdNotify.ready
     end
@@ -29,8 +29,9 @@ begin
   integrate_with_systemd
 
   cli.run
-rescue => e
+rescue StandardError => e
   raise e if $DEBUG
+
   if Sidekiq.error_handlers.length == 0
     warn e.message
     warn e.backtrace.join("\n")

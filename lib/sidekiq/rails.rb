@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "sidekiq/worker"
+require 'sidekiq/worker'
 
 module Sidekiq
   class Rails < ::Rails::Engine
@@ -9,10 +9,8 @@ module Sidekiq
         @app = app
       end
 
-      def call
-        @app.reloader.wrap do
-          yield
-        end
+      def call(&block)
+        @app.reloader.wrap(&block)
       end
 
       def inspect
@@ -31,13 +29,13 @@ module Sidekiq
     #     def perform
     #     end
     #   end
-    initializer "sidekiq.active_job_integration" do
+    initializer 'sidekiq.active_job_integration' do
       ActiveSupport.on_load(:active_job) do
         include ::Sidekiq::Worker::Options unless respond_to?(:sidekiq_options)
       end
     end
 
-    initializer "sidekiq.rails_logger" do
+    initializer 'sidekiq.rails_logger' do
       Sidekiq.configure_server do |_|
         # This is the integration code necessary so that if code uses `Rails.logger.info "Hello"`,
         # it will appear in the Sidekiq console with all of the job context. See #5021 and

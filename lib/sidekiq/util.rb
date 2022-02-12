@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require "forwardable"
-require "socket"
-require "securerandom"
-require "sidekiq/exception_handler"
+require 'forwardable'
+require 'socket'
+require 'securerandom'
+require 'sidekiq/exception_handler'
 
 module Sidekiq
   ##
@@ -39,7 +39,7 @@ module Sidekiq
   module Util
     include ExceptionHandler
 
-    # hack for quicker development / testing environment #2774
+    # HACK: for quicker development / testing environment #2774
     PAUSE_TIME = $stdout.tty? ? 0.1 : 0.5
 
     # Wait for the orblock to be true or the deadline passed.
@@ -47,6 +47,7 @@ module Sidekiq
       remaining = deadline - ::Process.clock_gettime(::Process::CLOCK_MONOTONIC)
       while remaining > PAUSE_TIME
         return if condblock.call
+
         sleep PAUSE_TIME
         remaining = deadline - ::Process.clock_gettime(::Process::CLOCK_MONOTONIC)
       end
@@ -54,9 +55,9 @@ module Sidekiq
 
     def watchdog(last_words)
       yield
-    rescue Exception => ex
-      handle_exception(ex, {context: last_words})
-      raise ex
+    rescue Exception => e
+      handle_exception(e, { context: last_words })
+      raise e
     end
 
     def safe_thread(name, &block)
@@ -75,11 +76,11 @@ module Sidekiq
     end
 
     def tid
-      Thread.current["sidekiq_tid"] ||= (Thread.current.object_id ^ ::Process.pid).to_s(36)
+      Thread.current['sidekiq_tid'] ||= (Thread.current.object_id ^ ::Process.pid).to_s(36)
     end
 
     def hostname
-      ENV["DYNO"] || Socket.gethostname
+      ENV['DYNO'] || Socket.gethostname
     end
 
     def process_nonce
@@ -98,9 +99,9 @@ module Sidekiq
       arr.reverse! if reverse
       arr.each do |block|
         block.call
-      rescue => ex
-        handle_exception(ex, {context: "Exception during Sidekiq lifecycle event.", event: event})
-        raise ex if reraise
+      rescue StandardError => e
+        handle_exception(e, { context: 'Exception during Sidekiq lifecycle event.', event: event })
+        raise e if reraise
       end
       arr.clear
     end

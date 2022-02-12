@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/web'
 
@@ -6,7 +7,7 @@ class TestWebHelpers < Minitest::Test
   class Helpers
     include Sidekiq::WebHelpers
 
-    def initialize(params={})
+    def initialize(params = {})
       @thehash = default.merge(params)
     end
 
@@ -90,38 +91,38 @@ class TestWebHelpers < Minitest::Test
 
   def test_available_locales
     obj = Helpers.new
-    expected = %w(
+    expected = %w[
       ar cs da de el en es fa fr he hi it ja
       ko lt nb nl pl pt pt-br ru sv ta uk ur
       vi zh-cn zh-tw
-    )
+    ]
     assert_equal expected, obj.available_locales.sort
   end
 
   def test_display_illegal_args
     o = Helpers.new
-    s = o.display_args([1,2,3])
-    assert_equal "1, 2, 3", s
-    s = o.display_args(["<html>", 12])
-    assert_equal "&quot;&lt;html&gt;&quot;, 12", s
-    s = o.display_args("<html>")
-    assert_equal "Invalid job payload, args must be an Array, not String", s
+    s = o.display_args([1, 2, 3])
+    assert_equal '1, 2, 3', s
+    s = o.display_args(['<html>', 12])
+    assert_equal '&quot;&lt;html&gt;&quot;, 12', s
+    s = o.display_args('<html>')
+    assert_equal 'Invalid job payload, args must be an Array, not String', s
     s = o.display_args(nil)
-    assert_equal "Invalid job payload, args is nil", s
+    assert_equal 'Invalid job payload, args is nil', s
   end
 
   def test_to_query_string_escapes_bad_query_input
     obj = Helpers.new
-    assert_equal "page=B%3CH", obj.to_query_string("page" => "B<H")
+    assert_equal 'page=B%3CH', obj.to_query_string('page' => 'B<H')
   end
 
   def test_qparams_string_escapes_bad_query_input
     obj = Helpers.new
     obj.instance_eval do
       def params
-        { "direction" => "H>B" }
+        { 'direction' => 'H>B' }
       end
     end
-    assert_equal "direction=H%3EB&page=B%3CH", obj.qparams("page" => "B<H")
+    assert_equal 'direction=H%3EB&page=B%3CH', obj.qparams('page' => 'B<H')
   end
 end

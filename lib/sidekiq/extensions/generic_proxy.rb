@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "yaml"
+require 'yaml'
 
 module Sidekiq
   module Extensions
@@ -22,11 +22,13 @@ module Sidekiq
         obj = [@target, name, args]
         marshalled = ::YAML.dump(obj)
         if marshalled.size > SIZE_LIMIT
-          ::Sidekiq.logger.warn { "#{@target}.#{name} job argument is #{marshalled.bytesize} bytes, you should refactor it to reduce the size" }
+          ::Sidekiq.logger.warn do
+            "#{@target}.#{name} job argument is #{marshalled.bytesize} bytes, you should refactor it to reduce the size"
+          end
         end
-        @performable.client_push({"class" => @performable,
-                                  "args" => [marshalled],
-                                  "display_class" => "#{@target}.#{name}"}.merge(@opts))
+        @performable.client_push({ 'class' => @performable,
+                                   'args' => [marshalled],
+                                   'display_class' => "#{@target}.#{name}" }.merge(@opts))
       end
     end
   end

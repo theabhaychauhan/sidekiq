@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
-require "rack"
+require 'rack'
 
 module Sidekiq
   module WebRouter
-    GET = "GET"
-    DELETE = "DELETE"
-    POST = "POST"
-    PUT = "PUT"
-    PATCH = "PATCH"
-    HEAD = "HEAD"
+    GET = 'GET'
+    DELETE = 'DELETE'
+    POST = 'POST'
+    PUT = 'PUT'
+    PATCH = 'PATCH'
+    HEAD = 'HEAD'
 
-    ROUTE_PARAMS = "rack.route_params"
-    REQUEST_METHOD = "REQUEST_METHOD"
-    PATH_INFO = "PATH_INFO"
+    ROUTE_PARAMS = 'rack.route_params'
+    REQUEST_METHOD = 'REQUEST_METHOD'
+    PATH_INFO = 'PATH_INFO'
 
     def head(path, &block)
       route(HEAD, path, &block)
@@ -40,7 +40,7 @@ module Sidekiq
     end
 
     def route(method, path, &block)
-      @routes ||= {GET => [], POST => [], PUT => [], PATCH => [], DELETE => [], HEAD => []}
+      @routes ||= { GET => [], POST => [], PUT => [], PATCH => [], DELETE => [], HEAD => [] }
 
       @routes[method] << WebRoute.new(method, path, block)
     end
@@ -51,15 +51,15 @@ module Sidekiq
 
       # There are servers which send an empty string when requesting the root.
       # These servers should be ashamed of themselves.
-      path_info = "/" if path_info == ""
+      path_info = '/' if path_info == ''
 
       @routes[request_method].each do |route|
         params = route.match(request_method, path_info)
-        if params
-          env[ROUTE_PARAMS] = params
+        next unless params
 
-          return WebAction.new(env, route.block)
-        end
+        env[ROUTE_PARAMS] = params
+
+        return WebAction.new(env, route.block)
       end
 
       nil
@@ -69,7 +69,7 @@ module Sidekiq
   class WebRoute
     attr_accessor :request_method, :pattern, :block, :name
 
-    NAMED_SEGMENTS_PATTERN = /\/([^\/]*):([^.:$\/]+)/
+    NAMED_SEGMENTS_PATTERN = %r{/([^/]*):([^.:$/]+)}
 
     def initialize(request_method, pattern, block)
       @request_method = request_method
@@ -91,7 +91,7 @@ module Sidekiq
       end
     end
 
-    def match(request_method, path)
+    def match(_request_method, path)
       case matcher
       when String
         {} if path == matcher

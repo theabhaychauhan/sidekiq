@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "sidekiq"
-require "sidekiq/util"
-require "sidekiq/api"
+require 'sidekiq'
+require 'sidekiq/util'
+require 'sidekiq/api'
 
 module Sidekiq
   module Scheduled
@@ -54,7 +54,7 @@ module Sidekiq
 
         conn.evalsha(@lua_zpopbyscore_sha, keys: keys, argv: argv)
       rescue Redis::CommandError => e
-        raise unless e.message.start_with?("NOSCRIPT")
+        raise unless e.message.start_with?('NOSCRIPT')
 
         @lua_zpopbyscore_sha = nil
         retry
@@ -93,24 +93,24 @@ module Sidekiq
       end
 
       def start
-        @thread ||= safe_thread("scheduler") {
+        @thread ||= safe_thread('scheduler') do
           initial_wait
 
           until @done
             enqueue
             wait
           end
-          Sidekiq.logger.info("Scheduler exiting...")
-        }
+          Sidekiq.logger.info('Scheduler exiting...')
+        end
       end
 
       def enqueue
         @enq.enqueue_jobs
-      rescue => ex
+      rescue StandardError => e
         # Most likely a problem with redis networking.
         # Punt and try again at the next interval
-        logger.error ex.message
-        handle_exception(ex)
+        logger.error e.message
+        handle_exception(e)
       end
 
       private
@@ -119,11 +119,11 @@ module Sidekiq
         @sleeper.pop(random_poll_interval)
       rescue Timeout::Error
         # expected
-      rescue => ex
+      rescue StandardError => e
         # if poll_interval_average hasn't been calculated yet, we can
         # raise an error trying to reach Redis.
-        logger.error ex.message
-        handle_exception(ex)
+        logger.error e.message
+        handle_exception(e)
         sleep 5
       end
 

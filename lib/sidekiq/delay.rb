@@ -6,8 +6,8 @@ module Sidekiq
       warn "Sidekiq's Delayed Extensions will be removed in Sidekiq 7.0", uplevel: 1
 
       if defined?(::ActiveSupport)
-        require "sidekiq/extensions/active_record"
-        require "sidekiq/extensions/action_mailer"
+        require 'sidekiq/extensions/active_record'
+        require 'sidekiq/extensions/action_mailer'
 
         # Need to patch Psych so it can autoload classes whose names are serialized
         # in the delayed YAML.
@@ -21,15 +21,16 @@ module Sidekiq
         end
       end
 
-      require "sidekiq/extensions/class_methods"
-      Module.__send__(:include, Sidekiq::Extensions::Klass)
+      require 'sidekiq/extensions/class_methods'
+      Module.include Sidekiq::Extensions::Klass
     end
 
     module PsychAutoload
       def resolve_class(klass_name)
         return nil if !klass_name || klass_name.empty?
+
         # constantize
-        names = klass_name.split("::")
+        names = klass_name.split('::')
         names.shift if names.empty? || names.first.empty?
 
         names.inject(Object) do |constant, name|

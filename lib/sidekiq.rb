@@ -1,26 +1,28 @@
 # frozen_string_literal: true
 
-require "sidekiq/version"
-fail "Sidekiq #{Sidekiq::VERSION} does not support Ruby versions below 2.5.0." if RUBY_PLATFORM != "java" && Gem::Version.new(RUBY_VERSION) < Gem::Version.new("2.5.0")
+require 'sidekiq/version'
+if RUBY_PLATFORM != 'java' && Gem::Version.new(RUBY_VERSION) < Gem::Version.new('2.5.0')
+  raise "Sidekiq #{Sidekiq::VERSION} does not support Ruby versions below 2.5.0."
+end
 
-require "sidekiq/logger"
-require "sidekiq/client"
-require "sidekiq/worker"
-require "sidekiq/job"
-require "sidekiq/redis_connection"
-require "sidekiq/delay"
+require 'sidekiq/logger'
+require 'sidekiq/client'
+require 'sidekiq/worker'
+require 'sidekiq/job'
+require 'sidekiq/redis_connection'
+require 'sidekiq/delay'
 
-require "json"
+require 'json'
 
 module Sidekiq
-  NAME = "Sidekiq"
-  LICENSE = "See LICENSE and the LGPL-3.0 for licensing details."
+  NAME = 'Sidekiq'
+  LICENSE = 'See LICENSE and the LGPL-3.0 for licensing details.'
 
   DEFAULTS = {
     queues: [],
     labels: [],
     concurrency: 10,
-    require: ".",
+    require: '.',
     strict: true,
     environment: nil,
     timeout: 25,
@@ -41,20 +43,20 @@ module Sidekiq
   }
 
   DEFAULT_WORKER_OPTIONS = {
-    "retry" => true,
-    "queue" => "default"
+    'retry' => true,
+    'queue' => 'default'
   }
 
   FAKE_INFO = {
-    "redis_version" => "9.9.9",
-    "uptime_in_days" => "9999",
-    "connected_clients" => "9999",
-    "used_memory_human" => "9P",
-    "used_memory_peak_human" => "9P"
+    'redis_version' => '9.9.9',
+    'uptime_in_days' => '9999',
+    'connected_clients' => '9999',
+    'used_memory_human' => '9P',
+    'used_memory_peak_human' => '9P'
   }
 
   def self.❨╯°□°❩╯︵┻━┻
-    puts "Calm down, yo."
+    puts 'Calm down, yo.'
   end
 
   def self.options
@@ -93,18 +95,19 @@ module Sidekiq
   end
 
   def self.redis
-    raise ArgumentError, "requires a block" unless block_given?
+    raise ArgumentError, 'requires a block' unless block_given?
+
     redis_pool.with do |conn|
       retryable = true
       begin
         yield conn
-      rescue Redis::BaseError => ex
+      rescue Redis::BaseError => e
         # 2550 Failover can cause the server to become a replica, need
         # to disconnect and reopen the socket to get back to the primary.
         # 4495 Use the same logic if we have a "Not enough replicas" error from the primary
         # 4985 Use the same logic when a blocking command is force-unblocked
         # The same retry logic is also used in client.rb
-        if retryable && ex.message =~ /READONLY|NOREPLICAS|UNBLOCKED/
+        if retryable && e.message =~ /READONLY|NOREPLICAS|UNBLOCKED/
           conn.disconnect!
           retryable = false
           retry
@@ -123,9 +126,10 @@ module Sidekiq
       else
         conn.info
       end
-    rescue Redis::CommandError => ex
+    rescue Redis::CommandError => e
       # 2850 return fake version when INFO command has (probably) been renamed
-      raise unless /unknown command/.match?(ex.message)
+      raise unless /unknown command/.match?(e.message)
+
       FAKE_INFO
     end
   end
@@ -136,10 +140,10 @@ module Sidekiq
 
   def self.redis=(hash)
     @redis = if hash.is_a?(ConnectionPool)
-      hash
-    else
-      Sidekiq::RedisConnection.create(hash)
-    end
+               hash
+             else
+               Sidekiq::RedisConnection.create(hash)
+             end
   end
 
   def self.client_middleware
@@ -189,11 +193,11 @@ module Sidekiq
   end
 
   def self.log_formatter
-    @log_formatter ||= if ENV["DYNO"]
-      Sidekiq::Logger::Formatters::WithoutTimestamp.new
-    else
-      Sidekiq::Logger::Formatters::Pretty.new
-    end
+    @log_formatter ||= if ENV['DYNO']
+                         Sidekiq::Logger::Formatters::WithoutTimestamp.new
+                       else
+                         Sidekiq::Logger::Formatters::Pretty.new
+                       end
   end
 
   def self.log_formatter=(log_formatter)
@@ -251,6 +255,7 @@ module Sidekiq
   def self.on(event, &block)
     raise ArgumentError, "Symbols only please: #{event}" unless event.is_a?(Symbol)
     raise ArgumentError, "Invalid event name: #{event}" unless options[:lifecycle_events].key?(event)
+
     options[:lifecycle_events][event] << block
   end
 
@@ -264,7 +269,7 @@ module Sidekiq
   # timeout limit.  This is needed to rollback db transactions,
   # otherwise Ruby's Thread#kill will commit.  See #377.
   # DO NOT RESCUE THIS ERROR IN YOUR WORKERS
-  class Shutdown < Interrupt; end
+  class Shutdown < RuntimeError; end
 end
 
-require "sidekiq/rails" if defined?(::Rails::Engine)
+require 'sidekiq/rails' if defined?(::Rails::Engine)

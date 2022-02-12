@@ -1,10 +1,11 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/manager'
 
 describe Sidekiq::Manager do
   before do
-    Sidekiq.redis {|c| c.flushdb }
+    Sidekiq.redis { |c| c.flushdb }
   end
 
   def new_manager(opts)
@@ -31,7 +32,7 @@ describe Sidekiq::Manager do
       assert_equal init_size, mgr.workers.size
       refute mgr.workers.include?(processor)
     ensure
-      mgr.workers.each {|p| p.terminate(true) }
+      mgr.workers.each { |p| p.terminate(true) }
     end
   end
 
@@ -41,7 +42,6 @@ describe Sidekiq::Manager do
   end
 
   def options
-    { :concurrency => 3, :queues => ['default'] }
+    { concurrency: 3, queues: ['default'] }
   end
-
 end

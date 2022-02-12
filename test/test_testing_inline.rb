@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 
 describe 'Sidekiq::Testing.inline' do
@@ -8,7 +9,7 @@ describe 'Sidekiq::Testing.inline' do
   class InlineWorker
     include Sidekiq::Worker
     def perform(pass)
-      raise ArgumentError, "no jid" unless jid
+      raise ArgumentError, 'no jid' unless jid
       raise InlineError unless pass
     end
   end
@@ -40,13 +41,13 @@ describe 'Sidekiq::Testing.inline' do
   describe 'delay' do
     require 'action_mailer'
     class InlineFooMailer < ActionMailer::Base
-      def bar(str)
+      def bar(_str)
         raise InlineError
       end
     end
 
     class InlineFooModel
-      def self.bar(str)
+      def self.bar(_str)
         raise InlineError
       end
     end
@@ -77,15 +78,14 @@ describe 'Sidekiq::Testing.inline' do
   end
 
   it 'stubs the push_bulk call when in testing mode' do
-    assert Sidekiq::Client.push_bulk({'class' => InlineWorker, 'args' => [[true], [true]]})
+    assert Sidekiq::Client.push_bulk({ 'class' => InlineWorker, 'args' => [[true], [true]] })
 
     assert_raises InlineError do
-      Sidekiq::Client.push_bulk({'class' => InlineWorker, 'args' => [[true], [false]]})
+      Sidekiq::Client.push_bulk({ 'class' => InlineWorker, 'args' => [[true], [false]] })
     end
   end
 
   it 'should relay parameters through json' do
     assert Sidekiq::Client.enqueue(InlineWorkerWithTimeParam, Time.now.to_f)
   end
-
 end

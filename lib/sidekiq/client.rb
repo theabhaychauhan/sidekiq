@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "securerandom"
-require "sidekiq/middleware/chain"
-require "sidekiq/job_util"
+require 'securerandom'
+require 'sidekiq/middleware/chain'
+require 'sidekiq/job_util'
 
 module Sidekiq
   class Client
@@ -71,11 +71,11 @@ module Sidekiq
     #
     def push(item)
       normed = normalize_item(item)
-      payload = process_single(item["class"], normed)
+      payload = process_single(item['class'], normed)
 
       if payload
         raw_push([payload])
-        payload["jid"]
+        payload['jid']
       end
     end
 
@@ -93,25 +93,37 @@ module Sidekiq
     # Returns an array of the of pushed jobs' jids.  The number of jobs pushed can be less
     # than the number given if the middleware stopped processing for one or more jobs.
     def push_bulk(items)
-      args = items["args"]
-      raise ArgumentError, "Bulk arguments must be an Array of Arrays: [[1], [2]]" unless args.is_a?(Array) && args.all?(Array)
+      args = items['args']
+      unless args.is_a?(Array) && args.all?(Array)
+        raise ArgumentError,
+              'Bulk arguments must be an Array of Arrays: [[1], [2]]'
+      end
       return [] if args.empty? # no jobs to push
 
-      at = items.delete("at")
-      raise ArgumentError, "Job 'at' must be a Numeric or an Array of Numeric timestamps" if at && (Array(at).empty? || !Array(at).all? { |entry| entry.is_a?(Numeric) })
-      raise ArgumentError, "Job 'at' Array must have same size as 'args' Array" if at.is_a?(Array) && at.size != args.size
+      at = items.delete('at')
+      if at && (Array(at).empty? || !Array(at).all? do |entry|
+                  entry.is_a?(Numeric)
+                end)
+        raise ArgumentError,
+              "Job 'at' must be a Numeric or an Array of Numeric timestamps"
+      end
+
+      if at.is_a?(Array) && at.size != args.size
+        raise ArgumentError,
+              "Job 'at' Array must have same size as 'args' Array"
+      end
 
       normed = normalize_item(items)
-      payloads = args.map.with_index { |job_args, index|
-        copy = normed.merge("args" => job_args, "jid" => SecureRandom.hex(12))
-        copy["at"] = (at.is_a?(Array) ? at[index] : at) if at
+      payloads = args.map.with_index do |job_args, index|
+        copy = normed.merge('args' => job_args, 'jid' => SecureRandom.hex(12))
+        copy['at'] = (at.is_a?(Array) ? at[index] : at) if at
 
-        result = process_single(items["class"], copy)
+        result = process_single(items['class'], copy)
         result || nil
-      }.compact
+      end.compact
 
       raw_push(payloads) unless payloads.empty?
-      payloads.collect { |payload| payload["jid"] }
+      payloads.collect { |payload| payload['jid'] }
     end
 
     # Allows sharding of jobs across any number of Redis instances.  All jobs
@@ -127,7 +139,8 @@ module Sidekiq
     # thousands of jobs per second.  I do not recommend sharding unless
     # you cannot scale any other way (e.g. splitting your app into smaller apps).
     def self.via(pool)
-      raise ArgumentError, "No pool given" if pool.nil?
+      raise ArgumentError, 'No pool given' if pool.nil?
+
       current_sidekiq_pool = Thread.current[:sidekiq_via_pool]
       Thread.current[:sidekiq_via_pool] = pool
       yield
@@ -153,14 +166,14 @@ module Sidekiq
       # Messages are enqueued to the 'default' queue.
       #
       def enqueue(klass, *args)
-        klass.client_push("class" => klass, "args" => args)
+        klass.client_push('class' => klass, 'args' => args)
       end
 
       # Example usage:
       #   Sidekiq::Client.enqueue_to(:queue_name, MyWorker, 'foo', 1, :bat => 'bar')
       #
       def enqueue_to(queue, klass, *args)
-        klass.client_push("queue" => queue, "class" => klass, "args" => args)
+        klass.client_push('queue' => queue, 'class' => klass, 'args' => args)
       end
 
       # Example usage:
@@ -171,8 +184,8 @@ module Sidekiq
         now = Time.now.to_f
         ts = (int < 1_000_000_000 ? now + int : int)
 
-        item = {"class" => klass, "args" => args, "at" => ts, "queue" => queue}
-        item.delete("at") if ts <= now
+        item = { 'class' => klass, 'args' => args, 'at' => ts, 'queue' => queue }
+        item.delete('at') if ts <= now
 
         klass.client_push(item)
       end
@@ -194,13 +207,13 @@ module Sidekiq
           conn.pipelined do |pipeline|
             atomic_push(pipeline, payloads)
           end
-        rescue Redis::BaseError => ex
+        rescue Redis::BaseError => e
           # 2550 Failover can cause the server to become a replica, need
           # to disconnect and reopen the socket to get back to the primary.
           # 4495 Use the same logic if we have a "Not enough replicas" error from the primary
           # 4985 Use the same logic when a blocking command is force-unblocked
           # The retry logic is copied from sidekiq.rb
-          if retryable && ex.message =~ /READONLY|NOREPLICAS|UNBLOCKED/
+          if retryable && e.message =~ /READONLY|NOREPLICAS|UNBLOCKED/
             conn.disconnect!
             retryable = false
             retry
@@ -212,25 +225,25 @@ module Sidekiq
     end
 
     def atomic_push(conn, payloads)
-      if payloads.first.key?("at")
-        conn.zadd("schedule", payloads.map { |hash|
-          at = hash.delete("at").to_s
+      if payloads.first.key?('at')
+        conn.zadd('schedule', payloads.map do |hash|
+          at = hash.delete('at').to_s
           [at, Sidekiq.dump_json(hash)]
-        })
+        end)
       else
-        queue = payloads.first["queue"]
+        queue = payloads.first['queue']
         now = Time.now.to_f
-        to_push = payloads.map { |entry|
-          entry["enqueued_at"] = now
+        to_push = payloads.map do |entry|
+          entry['enqueued_at'] = now
           Sidekiq.dump_json(entry)
-        }
-        conn.sadd("queues", queue)
+        end
+        conn.sadd('queues', queue)
         conn.lpush("queue:#{queue}", to_push)
       end
     end
 
     def process_single(worker_class, item)
-      queue = item["queue"]
+      queue = item['queue']
 
       middleware.invoke(worker_class, item, queue, @redis_pool) do
         item

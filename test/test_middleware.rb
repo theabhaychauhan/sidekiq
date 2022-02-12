@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/middleware/chain'
 require 'sidekiq/processor'
@@ -14,7 +15,7 @@ describe Sidekiq::Middleware do
       @recorder = recorder
     end
 
-    def call(*args)
+    def call(*_args)
       @recorder << [@name, 'before']
       yield
       @recorder << [@name, 'after']
@@ -31,18 +32,17 @@ describe Sidekiq::Middleware do
   class CustomWorker
     $recorder = []
     include Sidekiq::Worker
-    def perform(recorder)
+    def perform(_recorder)
       $recorder << ['work_performed']
     end
   end
 
   class NonYieldingMiddleware
-    def call(*args)
-    end
+    def call(*args); end
   end
 
   class ArgumentYieldingMiddleware
-    def call(*args)
+    def call(*_args)
       yield 1
     end
   end
@@ -53,7 +53,7 @@ describe Sidekiq::Middleware do
       @recorder = recorder
     end
 
-    def call(*args)
+    def call(*_args)
       @recorder << [@name, 'before']
       yield
       @recorder << [@name, 'after']
@@ -66,7 +66,7 @@ describe Sidekiq::Middleware do
       @recorder = recorder
     end
 
-    def call(*args)
+    def call(*_args)
       @recorder << [@name, 'before']
       yield
       @recorder << [@name, 'after']
@@ -84,17 +84,17 @@ describe Sidekiq::Middleware do
     end
 
     boss = Minitest::Mock.new
-    opts = {:queues => ['default'] }
+    opts = { queues: ['default'] }
     processor = Sidekiq::Processor.new(boss, opts)
     boss.expect(:processor_done, nil, [processor])
     processor.process(Sidekiq::BasicFetch::UnitOfWork.new('queue:default', msg))
-    assert_equal %w(2 before 3 before 1 before work_performed 1 after 3 after 2 after), $recorder.flatten
+    assert_equal %w[2 before 3 before 1 before work_performed 1 after 3 after 2 after], $recorder.flatten
   end
 
   it 'correctly replaces middleware when using middleware with options in the initializer' do
     chain = Sidekiq::Middleware::Chain.new
     chain.add NonYieldingMiddleware
-    chain.add NonYieldingMiddleware, {:foo => 5}
+    chain.add NonYieldingMiddleware, { foo: 5 }
     assert_equal 1, chain.count
   end
 
@@ -139,7 +139,7 @@ describe Sidekiq::Middleware do
       I18n.locale = 'fr'
       msg = {}
       mw = Sidekiq::Middleware::I18n::Client.new
-      mw.call(nil, msg, nil, nil) { }
+      mw.call(nil, msg, nil, nil) {}
       assert_equal :fr, msg['locale']
 
       msg['locale'] = 'jp'
@@ -154,7 +154,7 @@ describe Sidekiq::Middleware do
 
     it 'supports I18n.enforce_available_locales = true' do
       I18n.enforce_available_locales = true
-      I18n.available_locales = [:en, :jp]
+      I18n.available_locales = %i[en jp]
 
       msg = { 'locale' => 'jp' }
       mw = Sidekiq::Middleware::I18n::Server.new

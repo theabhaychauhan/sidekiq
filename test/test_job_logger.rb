@@ -25,7 +25,7 @@ class TestJobLogger < Minitest::Test
 
     # pretty
     p = @logger.formatter = Sidekiq::Logger::Formatters::Pretty.new
-    job = {"jid"=>"1234abc", "wrapped"=>"FooWorker", "class"=>"Wrapper", "tags" => ["bar", "baz"]}
+    job = { 'jid' => '1234abc', 'wrapped' => 'FooWorker', 'class' => 'Wrapper', 'tags' => %w[bar baz] }
     # this mocks what Processor does
     jl.prepare(job) do
       jl.call(job, 'queue') {}
@@ -45,7 +45,8 @@ class TestJobLogger < Minitest::Test
     # json
     @logger.formatter = Sidekiq::Logger::Formatters::JSON.new
     jl = Sidekiq::JobLogger.new(@logger)
-    job = {"jid"=>"1234abc", "wrapped"=>"Wrapper", "class"=>"FooWorker", "bid"=>"b-xyz", "tags" => ["bar", "baz"]}
+    job = { 'jid' => '1234abc', 'wrapped' => 'Wrapper', 'class' => 'FooWorker', 'bid' => 'b-xyz',
+            'tags' => %w[bar baz] }
     # this mocks what Processor does
     jl.prepare(job) do
       jl.call(job, 'queue') {}
@@ -55,20 +56,20 @@ class TestJobLogger < Minitest::Test
     assert b
     hsh = JSON.parse(a)
     keys = hsh.keys.sort
-    assert_equal(["ctx", "lvl", "msg", "pid", "tid", "ts"], keys)
-    keys = hsh["ctx"].keys.sort
-    assert_equal(["bid", "class", "jid", "tags"], keys)
+    assert_equal(%w[ctx lvl msg pid tid ts], keys)
+    keys = hsh['ctx'].keys.sort
+    assert_equal(%w[bid class jid tags], keys)
   end
 
   def test_custom_log_level
     jl = Sidekiq::JobLogger.new(@logger)
-    job = {"class"=>"FooWorker", "log_level"=>"debug"}
+    job = { 'class' => 'FooWorker', 'log_level' => 'debug' }
 
     assert @logger.info?
     jl.prepare(job) do
-      jl.call(job, "queue") do
+      jl.call(job, 'queue') do
         assert @logger.debug?
-        @logger.debug("debug message")
+        @logger.debug('debug message')
       end
     end
     assert @logger.info?
@@ -81,11 +82,11 @@ class TestJobLogger < Minitest::Test
 
   def test_custom_log_level_uses_default_log_level_for_invalid_value
     jl = Sidekiq::JobLogger.new(@logger)
-    job = {"class"=>"FooWorker", "log_level"=>"non_existent"}
+    job = { 'class' => 'FooWorker', 'log_level' => 'non_existent' }
 
     assert @logger.info?
     jl.prepare(job) do
-      jl.call(job, "queue") do
+      jl.call(job, 'queue') do
         assert @logger.info?
       end
     end

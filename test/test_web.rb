@@ -1,5 +1,5 @@
-# encoding: utf-8
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/web'
 require 'sidekiq/util'
@@ -17,7 +17,7 @@ describe Sidekiq::Web do
   end
 
   before do
-    Sidekiq.redis {|c| c.flushdb }
+    Sidekiq.redis { |c| c.flushdb }
     app.middlewares.clear
   end
 
@@ -30,29 +30,29 @@ describe Sidekiq::Web do
   end
 
   it 'can show text with any locales' do
-    rackenv = {'HTTP_ACCEPT_LANGUAGE' => 'ru,en'}
+    rackenv = { 'HTTP_ACCEPT_LANGUAGE' => 'ru,en' }
     get '/', {}, rackenv
     assert_match(/Панель управления/, last_response.body)
-    rackenv = {'HTTP_ACCEPT_LANGUAGE' => 'es,en'}
+    rackenv = { 'HTTP_ACCEPT_LANGUAGE' => 'es,en' }
     get '/', {}, rackenv
     assert_match(/Panel de Control/, last_response.body)
-    rackenv = {'HTTP_ACCEPT_LANGUAGE' => 'en-us'}
+    rackenv = { 'HTTP_ACCEPT_LANGUAGE' => 'en-us' }
     get '/', {}, rackenv
     assert_match(/Dashboard/, last_response.body)
-    rackenv = {'HTTP_ACCEPT_LANGUAGE' => 'zh-cn'}
+    rackenv = { 'HTTP_ACCEPT_LANGUAGE' => 'zh-cn' }
     get '/', {}, rackenv
     assert_match(/信息板/, last_response.body)
-    rackenv = {'HTTP_ACCEPT_LANGUAGE' => 'zh-tw'}
+    rackenv = { 'HTTP_ACCEPT_LANGUAGE' => 'zh-tw' }
     get '/', {}, rackenv
     assert_match(/資訊主頁/, last_response.body)
-    rackenv = {'HTTP_ACCEPT_LANGUAGE' => 'nb'}
+    rackenv = { 'HTTP_ACCEPT_LANGUAGE' => 'nb' }
     get '/', {}, rackenv
     assert_match(/Oversikt/, last_response.body)
   end
 
   it 'can provide a default, appropriate CSP for its content' do
     get '/', {}
-    policies = last_response.headers["Content-Security-Policy"].split('; ')
+    policies = last_response.headers['Content-Security-Policy'].split('; ')
     assert_includes(policies, "connect-src 'self' https: http: wss: ws:")
     assert_includes(policies, "style-src 'self' https: http: 'unsafe-inline'")
     assert_includes(policies, "script-src 'self' https: http: 'unsafe-inline'")
@@ -60,17 +60,18 @@ describe Sidekiq::Web do
   end
 
   describe 'busy' do
-
     it 'can display workers' do
       Sidekiq.redis do |conn|
         conn.incr('busy')
         conn.sadd('processes', 'foo:1234')
-        conn.hmset('foo:1234', 'info', Sidekiq.dump_json('hostname' => 'foo', 'started_at' => Time.now.to_f, "queues" => [], 'concurrency' => 10), 'at', Time.now.to_f, 'busy', 4)
+        conn.hmset('foo:1234', 'info',
+                   Sidekiq.dump_json('hostname' => 'foo', 'started_at' => Time.now.to_f, 'queues' => [], 'concurrency' => 10), 'at', Time.now.to_f, 'busy', 4)
         identity = 'foo:1234:workers'
-        hash = {:queue => 'critical', :payload => { 'class' => WebWorker.name, 'args' => [1,'abc'] }, :run_at => Time.now.to_i }
+        hash = { queue: 'critical', payload: { 'class' => WebWorker.name, 'args' => [1, 'abc'] },
+                 run_at: Time.now.to_i }
         conn.hmset(identity, 1001, Sidekiq.dump_json(hash))
       end
-      assert_equal ['1001'], Sidekiq::Workers.new.map { |pid, tid, data| tid }
+      assert_equal ['1001'], Sidekiq::Workers.new.map { |_pid, tid, _data| tid }
 
       get '/busy'
       assert_equal 200, last_response.status
@@ -109,7 +110,7 @@ describe Sidekiq::Web do
     refute_match(/HardWorker/, last_response.body)
     assert_match(/0.0/, last_response.body)
     refute_match(/datetime/, last_response.body)
-    Sidekiq::Queue.new("foo").clear
+    Sidekiq::Queue.new('foo').clear
 
     Time.stub(:now, Time.now - 65) do
       assert Sidekiq::Client.push('queue' => :foo, 'class' => WebWorker, 'args' => [1, 3])
@@ -153,7 +154,7 @@ describe Sidekiq::Web do
 
   it 'can delete a queue' do
     Sidekiq.redis do |conn|
-      conn.rpush('queue:foo', "{\"args\":[],\"enqueued_at\":1567894960}")
+      conn.rpush('queue:foo', '{"args":[],"enqueued_at":1567894960}')
       conn.sadd('queues', 'foo')
     end
 
@@ -251,11 +252,11 @@ describe Sidekiq::Web do
     get '/queues/foo'
     assert_equal 200, last_response.status
 
-    post '/queues/foo/delete', key_val: "{\"foo\":\"bar\"}"
+    post '/queues/foo/delete', key_val: '{"foo":"bar"}'
     assert_equal 302, last_response.status
 
     Sidekiq.redis do |conn|
-      refute conn.lrange('queue:foo', 0, -1).include?("{\"foo\":\"bar\"}")
+      refute conn.lrange('queue:foo', 0, -1).include?('{"foo":"bar"}')
     end
   end
 
@@ -283,7 +284,7 @@ describe Sidekiq::Web do
   end
 
   it 'handles missing retry' do
-    get "/retries/0-shouldntexist"
+    get '/retries/0-shouldntexist'
     assert_equal 302, last_response.status
   end
 
@@ -293,7 +294,7 @@ describe Sidekiq::Web do
     assert_equal 302, last_response.status
     assert_equal 'http://example.org/retries', last_response.header['Location']
 
-    get "/retries"
+    get '/retries'
     assert_equal 200, last_response.status
     refute_match(/#{params.first['args'][2]}/, last_response.body)
   end
@@ -301,7 +302,7 @@ describe Sidekiq::Web do
   it 'can delete all retries' do
     3.times { add_retry }
 
-    post "/retries/all/delete", 'delete' => 'Delete'
+    post '/retries/all/delete', 'delete' => 'Delete'
     assert_equal 0, Sidekiq::RetrySet.new.size
     assert_equal 302, last_response.status
     assert_equal 'http://example.org/retries', last_response.header['Location']
@@ -360,7 +361,7 @@ describe Sidekiq::Web do
   end
 
   it 'handles missing scheduled job' do
-    get "/scheduled/0-shouldntexist"
+    get '/scheduled/0-shouldntexist'
     assert_equal 302, last_response.status
   end
 
@@ -381,7 +382,7 @@ describe Sidekiq::Web do
     assert_equal 302, last_response.status
     assert_equal 'http://example.org/scheduled', last_response.header['Location']
 
-    get "/scheduled"
+    get '/scheduled'
     assert_equal 200, last_response.status
     refute_match(/#{params.first['args'][2]}/, last_response.body)
   end
@@ -397,7 +398,7 @@ describe Sidekiq::Web do
     end
   end
 
-  it "can move scheduled to default queue" do
+  it 'can move scheduled to default queue' do
     q = Sidekiq::Queue.new
     params = add_scheduled
     Sidekiq.redis do |conn|
@@ -418,10 +419,10 @@ describe Sidekiq::Web do
     msg = add_retry.first
     add_retry
 
-    post "/retries/all/retry", 'retry' => 'Retry'
+    post '/retries/all/retry', 'retry' => 'Retry'
     assert_equal 302, last_response.status
     assert_equal 'http://example.org/retries', last_response.header['Location']
-    assert_equal 2, Sidekiq::Queue.new("default").size
+    assert_equal 2, Sidekiq::Queue.new('default').size
 
     get '/queues/default'
     assert_equal 200, last_response.status
@@ -435,20 +436,22 @@ describe Sidekiq::Web do
     assert_equal 200, last_response.status
     assert_match(/FailWorker/, last_response.body)
 
-    assert last_response.body.include?( "fail message: &lt;a&gt;hello&lt;&#x2F;a&gt;" )
-    assert !last_response.body.include?( "fail message: <a>hello</a>" )
+    assert last_response.body.include?('fail message: &lt;a&gt;hello&lt;&#x2F;a&gt;')
+    assert !last_response.body.include?('fail message: <a>hello</a>')
 
-    assert last_response.body.include?( "args\">&quot;&lt;a&gt;hello&lt;&#x2F;a&gt;&quot;<" )
-    assert !last_response.body.include?( "args\"><a>hello</a><" )
+    assert last_response.body.include?('args">&quot;&lt;a&gt;hello&lt;&#x2F;a&gt;&quot;<')
+    assert !last_response.body.include?('args"><a>hello</a><')
 
     # on /workers page
     Sidekiq.redis do |conn|
       pro = 'foo:1234'
       conn.sadd('processes', pro)
-      conn.hmset(pro, 'info', Sidekiq.dump_json('started_at' => Time.now.to_f, 'labels' => ['frumduz'], 'queues' =>[], 'concurrency' => 10), 'busy', 1, 'beat', Time.now.to_f)
+      conn.hmset(pro, 'info',
+                 Sidekiq.dump_json('started_at' => Time.now.to_f, 'labels' => ['frumduz'], 'queues' => [], 'concurrency' => 10), 'busy', 1, 'beat', Time.now.to_f)
       identity = "#{pro}:workers"
-      hash = {:queue => 'critical', :payload => { 'class' => "FailWorker", 'args' => ["<a>hello</a>"] }, :run_at => Time.now.to_i }
-      conn.hmset(identity, 100001, Sidekiq.dump_json(hash))
+      hash = { queue: 'critical', payload: { 'class' => 'FailWorker', 'args' => ['<a>hello</a>'] },
+               run_at: Time.now.to_i }
+      conn.hmset(identity, 100_001, Sidekiq.dump_json(hash))
       conn.incr('busy')
     end
 
@@ -456,8 +459,8 @@ describe Sidekiq::Web do
     assert_equal 200, last_response.status
     assert_match(/FailWorker/, last_response.body)
     assert_match(/frumduz/, last_response.body)
-    assert last_response.body.include?( "&lt;a&gt;hello&lt;&#x2F;a&gt;" )
-    assert !last_response.body.include?( "<a>hello</a>" )
+    assert last_response.body.include?('&lt;a&gt;hello&lt;&#x2F;a&gt;')
+    assert !last_response.body.include?('<a>hello</a>')
 
     # on /queues page
     params = add_xss_retry # sorry, don't know how to easily make this show up on queues page otherwise.
@@ -466,20 +469,17 @@ describe Sidekiq::Web do
 
     get '/queues/foo'
     assert_equal 200, last_response.status
-    assert last_response.body.include?( "&lt;a&gt;hello&lt;&#x2F;a&gt;" )
-    assert !last_response.body.include?( "<a>hello</a>" )
+    assert last_response.body.include?('&lt;a&gt;hello&lt;&#x2F;a&gt;')
+    assert !last_response.body.include?('<a>hello</a>')
   end
 
   it 'can show user defined tab' do
-    begin
-      Sidekiq::Web.tabs['Custom Tab'] = '/custom'
+    Sidekiq::Web.tabs['Custom Tab'] = '/custom'
 
-      get '/'
-      assert_match 'Custom Tab', last_response.body
-
-    ensure
-      Sidekiq::Web.tabs.delete 'Custom Tab'
-    end
+    get '/'
+    assert_match 'Custom Tab', last_response.body
+  ensure
+    Sidekiq::Web.tabs.delete 'Custom Tab'
   end
 
   it 'can display home' do
@@ -489,7 +489,7 @@ describe Sidekiq::Web do
 
   describe 'custom locales' do
     before do
-      Sidekiq::Web.settings.locales << File.join(File.dirname(__FILE__), "fixtures")
+      Sidekiq::Web.settings.locales << File.join(File.dirname(__FILE__), 'fixtures')
       Sidekiq::Web.tabs['Custom Tab'] = '/custom'
       Sidekiq::WebApplication.get('/custom') do
         clear_caches # ugly hack since I can't figure out how to access WebHelpers outside of this context
@@ -522,9 +522,9 @@ describe Sidekiq::Web do
 
     before do
       Sidekiq.redis do |conn|
-        conn.set("stat:processed", 5)
-        conn.set("stat:failed", 2)
-        conn.sadd("queues", "default")
+        conn.set('stat:processed', 5)
+        conn.set('stat:failed', 2)
+        conn.sadd('queues', 'default')
       end
       2.times { add_retry }
       3.times { add_scheduled }
@@ -536,21 +536,21 @@ describe Sidekiq::Web do
       @response = Sidekiq.load_json(last_response.body)
 
       assert_equal 200, last_response.status
-      assert_includes @response.keys, "sidekiq"
-      assert_equal 5, @response["sidekiq"]["processed"]
-      assert_equal 2, @response["sidekiq"]["failed"]
-      assert_equal 4, @response["sidekiq"]["busy"]
-      assert_equal 1, @response["sidekiq"]["processes"]
-      assert_equal 2, @response["sidekiq"]["retries"]
-      assert_equal 3, @response["sidekiq"]["scheduled"]
-      assert_equal 0, @response["sidekiq"]["default_latency"]
-      assert_includes @response.keys, "redis"
-      assert_includes @response["redis"].keys, "redis_version"
-      assert_includes @response["redis"].keys, "uptime_in_days"
-      assert_includes @response["redis"].keys, "connected_clients"
-      assert_includes @response["redis"].keys, "used_memory_human"
-      assert_includes @response["redis"].keys, "used_memory_peak_human"
-      assert_includes @response.keys, "server_utc_time"
+      assert_includes @response.keys, 'sidekiq'
+      assert_equal 5, @response['sidekiq']['processed']
+      assert_equal 2, @response['sidekiq']['failed']
+      assert_equal 4, @response['sidekiq']['busy']
+      assert_equal 1, @response['sidekiq']['processes']
+      assert_equal 2, @response['sidekiq']['retries']
+      assert_equal 3, @response['sidekiq']['scheduled']
+      assert_equal 0, @response['sidekiq']['default_latency']
+      assert_includes @response.keys, 'redis'
+      assert_includes @response['redis'].keys, 'redis_version'
+      assert_includes @response['redis'].keys, 'uptime_in_days'
+      assert_includes @response['redis'].keys, 'connected_clients'
+      assert_includes @response['redis'].keys, 'used_memory_human'
+      assert_includes @response['redis'].keys, 'used_memory_peak_human'
+      assert_includes @response.keys, 'server_utc_time'
     end
   end
 
@@ -563,7 +563,7 @@ describe Sidekiq::Web do
       get '/morgue'
       assert_equal 200, last_response.status
       assert_match(/#{score.to_i}/, last_response.body)
-      assert_match("something bad", last_response.body)
+      assert_match('something bad', last_response.body)
       assert_equal 1, s.size
 
       post "/morgue/#{score}-", 'delete' => 'Delete'
@@ -577,10 +577,10 @@ describe Sidekiq::Web do
 
     before do
       Sidekiq.redis do |conn|
-        conn.set("stat:processed", 5)
-        conn.set("stat:failed", 2)
-        conn.sadd("queues", "default")
-        conn.sadd("queues", "queue2")
+        conn.set('stat:processed', 5)
+        conn.set('stat:failed', 2)
+        conn.sadd('queues', 'default')
+        conn.sadd('queues', 'queue2')
       end
       2.times { add_retry }
       3.times { add_scheduled }
@@ -591,8 +591,8 @@ describe Sidekiq::Web do
     end
 
     it 'reports the queue depth' do
-      assert_equal 0, @response["default"]
-      assert_equal 0, @response["queue2"]
+      assert_equal 0, @response['default']
+      assert_equal 0, @response['queue2']
     end
   end
 
@@ -613,7 +613,7 @@ describe Sidekiq::Web do
       3.times { add_dead }
 
       assert_equal 3, Sidekiq::DeadSet.new.size
-      post "/morgue/all/delete", 'delete' => 'Delete'
+      post '/morgue/all/delete', 'delete' => 'Delete'
       assert_equal 0, Sidekiq::DeadSet.new.size
       assert_equal 302, last_response.status
       assert_equal 'http://example.org/morgue', last_response.header['Location']
@@ -648,7 +648,7 @@ describe Sidekiq::Web do
     msg = { 'class' => 'HardWorker',
             'args' => ['bob', 1, Time.now.to_f],
             'jid' => SecureRandom.hex(12),
-            'tags' => ['tag1', 'tag2'], }
+            'tags' => %w[tag1 tag2] }
     Sidekiq.redis do |conn|
       conn.zadd('schedule', score, Sidekiq.dump_json(msg))
     end
@@ -689,7 +689,7 @@ describe Sidekiq::Web do
   end
 
   def kill_bad
-    job = "{ something bad }"
+    job = '{ something bad }'
     score = Time.now.to_f
     Sidekiq.redis do |conn|
       conn.zadd('dead', score, job)
@@ -697,7 +697,7 @@ describe Sidekiq::Web do
     [job, score]
   end
 
-  def add_xss_retry(job_id=SecureRandom.hex(12))
+  def add_xss_retry(_job_id = SecureRandom.hex(12))
     msg = { 'class' => 'FailWorker',
             'args' => ['<a>hello</a>'],
             'queue' => 'foo',
@@ -716,11 +716,12 @@ describe Sidekiq::Web do
 
   def add_worker
     key = "#{hostname}:#{$$}"
-    msg = "{\"queue\":\"default\",\"payload\":{\"retry\":true,\"queue\":\"default\",\"timeout\":20,\"backtrace\":5,\"class\":\"HardWorker\",\"args\":[\"bob\",10,5],\"jid\":\"2b5ad2b016f5e063a1c62872\"},\"run_at\":1361208995}"
+    msg = '{"queue":"default","payload":{"retry":true,"queue":"default","timeout":20,"backtrace":5,"class":"HardWorker","args":["bob",10,5],"jid":"2b5ad2b016f5e063a1c62872"},"run_at":1361208995}'
     Sidekiq.redis do |conn|
       conn.multi do |transaction|
-        transaction.sadd("processes", key)
-        transaction.hmset(key, 'info', Sidekiq.dump_json('hostname' => 'foo', 'started_at' => Time.now.to_f, "queues" => []), 'at', Time.now.to_f, 'busy', 4)
+        transaction.sadd('processes', key)
+        transaction.hmset(key, 'info',
+                          Sidekiq.dump_json('hostname' => 'foo', 'started_at' => Time.now.to_f, 'queues' => []), 'at', Time.now.to_f, 'busy', 4)
         transaction.hmset("#{key}:workers", Time.now.to_f, msg)
       end
     end
@@ -731,7 +732,7 @@ describe Sidekiq::Web do
 
     def app
       app = Sidekiq::Web.new
-      app.use(Rack::Auth::Basic) { |user, pass| user == "a" && pass == "b" }
+      app.use(Rack::Auth::Basic) { |user, pass| user == 'a' && pass == 'b' }
       app.use(Rack::Session::Cookie, secret: SecureRandom.hex(32))
 
       app
@@ -741,7 +742,7 @@ describe Sidekiq::Web do
       get '/'
 
       assert_equal 401, last_response.status
-      refute_nil last_response.header["WWW-Authenticate"]
+      refute_nil last_response.header['WWW-Authenticate']
     end
 
     it 'authenticates successfuly' do
@@ -773,7 +774,7 @@ describe Sidekiq::Web do
     end
   end
 
-  describe "redirecting in before" do
+  describe 'redirecting in before' do
     include Rack::Test::Methods
 
     before do
@@ -793,7 +794,7 @@ describe Sidekiq::Web do
       app
     end
 
-    it "allows afters to run" do
+    it 'allows afters to run' do
       get '/'
       assert_equal :after, Thread.current[:some_setting]
     end

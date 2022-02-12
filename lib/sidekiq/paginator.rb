@@ -15,28 +15,28 @@ module Sidekiq
         rev = opts && opts[:reverse]
 
         case type
-        when "zset"
-          total_size, items = conn.multi { |transaction|
+        when 'zset'
+          total_size, items = conn.multi do |transaction|
             transaction.zcard(key)
             if rev
               transaction.zrevrange(key, starting, ending, with_scores: true)
             else
               transaction.zrange(key, starting, ending, with_scores: true)
             end
-          }
+          end
           [current_page, total_size, items]
-        when "list"
-          total_size, items = conn.multi { |transaction|
+        when 'list'
+          total_size, items = conn.multi do |transaction|
             transaction.llen(key)
             if rev
               transaction.lrange(key, -ending - 1, -starting - 1)
             else
               transaction.lrange(key, starting, ending)
             end
-          }
+          end
           items.reverse! if rev
           [current_page, total_size, items]
-        when "none"
+        when 'none'
           [1, 0, []]
         else
           raise "can't page a #{type}"

@@ -6,8 +6,8 @@
 #
 module Sidekiq
   def self.start_watchdog
-    usec = Integer(ENV["WATCHDOG_USEC"])
-    return Sidekiq.logger.error("systemd Watchdog too fast: " + usec) if usec < 1_000_000
+    usec = Integer(ENV['WATCHDOG_USEC'])
+    return Sidekiq.logger.error('systemd Watchdog too fast: ' + usec) if usec < 1_000_000
 
     sec_f = usec / 1_000_000.0
     # "It is recommended that a daemon sends a keep-alive notification message

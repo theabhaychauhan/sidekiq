@@ -1,4 +1,4 @@
-require "active_support/current_attributes"
+require 'active_support/current_attributes'
 
 module Sidekiq
   ##
@@ -21,10 +21,10 @@ module Sidekiq
 
       def call(_, job, _, _)
         attrs = @klass.attributes
-        if job.has_key?("cattr")
-          job["cattr"].merge!(attrs)
+        if job.has_key?('cattr')
+          job['cattr'].merge!(attrs)
         else
-          job["cattr"] = attrs
+          job['cattr'] = attrs
         end
         yield
       end
@@ -36,8 +36,8 @@ module Sidekiq
       end
 
       def call(_, job, _, &block)
-        if job.has_key?("cattr")
-          @klass.set(job["cattr"], &block)
+        if job.has_key?('cattr')
+          @klass.set(job['cattr'], &block)
         else
           yield
         end

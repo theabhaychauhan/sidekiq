@@ -25,7 +25,7 @@
 # The only changes made was "rehoming" it within the Sidekiq module to avoid
 # namespace collisions and applying standard's code formatting style.
 
-require "socket"
+require 'socket'
 
 # SdNotify is a pure-Ruby implementation of sd_notify(3). It can be used to
 # notify systemd about state changes. Methods of this package are no-op on
@@ -40,14 +40,14 @@ module Sidekiq
     # Exception raised when there's an error writing to the notification socket
     class NotifyError < RuntimeError; end
 
-    READY = "READY=1"
-    RELOADING = "RELOADING=1"
-    STOPPING = "STOPPING=1"
-    STATUS = "STATUS="
-    ERRNO = "ERRNO="
-    MAINPID = "MAINPID="
-    WATCHDOG = "WATCHDOG=1"
-    FDSTORE = "FDSTORE=1"
+    READY = 'READY=1'
+    RELOADING = 'RELOADING=1'
+    STOPPING = 'STOPPING=1'
+    STATUS = 'STATUS='
+    ERRNO = 'ERRNO='
+    MAINPID = 'MAINPID='
+    WATCHDOG = 'WATCHDOG=1'
+    FDSTORE = 'FDSTORE=1'
 
     def self.ready(unset_env = false)
       notify(READY, unset_env)
@@ -95,14 +95,14 @@ module Sidekiq
     # @note Unlike sd_watchdog_enabled(3), this method does not mutate the
     #   environment.
     def self.watchdog?
-      wd_usec = ENV["WATCHDOG_USEC"]
-      wd_pid = ENV["WATCHDOG_PID"]
+      wd_usec = ENV['WATCHDOG_USEC']
+      wd_pid = ENV['WATCHDOG_PID']
 
       return false unless wd_usec
 
       begin
         wd_usec = Integer(wd_usec)
-      rescue
+      rescue StandardError
         return false
       end
 
@@ -130,18 +130,18 @@ module Sidekiq
     #
     # @see https://www.freedesktop.org/software/systemd/man/sd_notify.html
     def self.notify(state, unset_env = false)
-      sock = ENV["NOTIFY_SOCKET"]
+      sock = ENV['NOTIFY_SOCKET']
 
       return nil unless sock
 
-      ENV.delete("NOTIFY_SOCKET") if unset_env
+      ENV.delete('NOTIFY_SOCKET') if unset_env
 
       begin
         Addrinfo.unix(sock, :DGRAM).connect do |s|
           s.close_on_exec = true
           s.write(state)
         end
-      rescue => e
+      rescue StandardError => e
         raise NotifyError, "#{e.class}: #{e.message}", e.backtrace
       end
     end

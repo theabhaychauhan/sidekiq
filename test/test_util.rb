@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/util'
 
@@ -10,11 +11,11 @@ class TestUtil < Minitest::Test
   def test_event_firing
     before_handlers = Sidekiq.options[:lifecycle_events][:startup]
     begin
-      Sidekiq.options[:lifecycle_events][:startup] = [proc { raise "boom" }]
+      Sidekiq.options[:lifecycle_events][:startup] = [proc { raise 'boom' }]
       h = Helpers.new
       h.fire_event(:startup)
 
-      Sidekiq.options[:lifecycle_events][:startup] = [proc { raise "boom" }]
+      Sidekiq.options[:lifecycle_events][:startup] = [proc { raise 'boom' }]
       assert_raises RuntimeError do
         h.fire_event(:startup, reraise: true)
       end

@@ -2,7 +2,6 @@ require_relative 'helper'
 
 describe Sidekiq::Worker do
   describe '#set' do
-
     class SetWorker
       include Sidekiq::Worker
       queue_as :foo
@@ -10,10 +9,10 @@ describe Sidekiq::Worker do
     end
 
     def setup
-      Sidekiq.redis {|c| c.flushdb }
+      Sidekiq.redis { |c| c.flushdb }
     end
 
-    it "provides basic ActiveJob compatibilility" do
+    it 'provides basic ActiveJob compatibilility' do
       q = Sidekiq::ScheduledSet.new
       assert_equal 0, q.size
       jid = SetWorker.set(wait_until: 1.hour.from_now).perform_async(123)
@@ -23,13 +22,13 @@ describe Sidekiq::Worker do
       assert jid
       assert_equal 2, q.size
 
-      q = Sidekiq::Queue.new("foo")
+      q = Sidekiq::Queue.new('foo')
       assert_equal 0, q.size
       SetWorker.perform_async
       assert_equal 1, q.size
 
       SetWorker.set(queue: 'xyz').perform_async
-      assert_equal 1, Sidekiq::Queue.new("xyz").size
+      assert_equal 1, Sidekiq::Queue.new('xyz').size
     end
 
     it 'can be memoized' do
@@ -41,7 +40,7 @@ describe Sidekiq::Worker do
       set.perform_async(1)
       set.perform_async(1)
       assert_equal 4, q.size
-      assert_equal 4, q.map{|j| j['jid'] }.uniq.size
+      assert_equal 4, q.map { |j| j['jid'] }.uniq.size
       set.perform_in(10, 1)
     end
 
@@ -113,7 +112,7 @@ describe Sidekiq::Worker do
     class MyCustomWorker
       include Sidekiq::Worker
 
-      def perform(recorder)
+      def perform(_recorder)
         $my_recorder << ['work_performed']
       end
     end
@@ -124,23 +123,24 @@ describe Sidekiq::Worker do
         @recorder = recorder
       end
 
-      def call(*args)
+      def call(*_args)
         @recorder << "#{@name}-before"
         response = yield
         @recorder << "#{@name}-after"
-        return response
+        response
       end
     end
 
     it 'executes middleware & runs job inline' do
       server_chain = Sidekiq::Middleware::Chain.new
-      server_chain.add MyCustomMiddleware, "1-server", $my_recorder
+      server_chain.add MyCustomMiddleware, '1-server', $my_recorder
       client_chain = Sidekiq::Middleware::Chain.new
-      client_chain.add MyCustomMiddleware, "1-client", $my_recorder
+      client_chain.add MyCustomMiddleware, '1-client', $my_recorder
       Sidekiq.stub(:server_middleware, server_chain) do
         Sidekiq.stub(:client_middleware, client_chain) do
           MyCustomWorker.perform_inline($my_recorder)
-          assert_equal $my_recorder.flatten, %w(1-client-before 1-client-after 1-server-before work_performed 1-server-after)
+          assert_equal $my_recorder.flatten,
+                       %w[1-client-before 1-client-after 1-server-before work_performed 1-server-after]
         end
       end
     end

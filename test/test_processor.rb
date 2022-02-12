@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/fetch'
 require 'sidekiq/cli'
@@ -6,12 +7,12 @@ require 'sidekiq/processor'
 
 describe Sidekiq::Processor do
   TestProcessorException = Class.new(StandardError)
-  TEST_PROC_EXCEPTION = TestProcessorException.new("kerboom!")
+  TEST_PROC_EXCEPTION = TestProcessorException.new('kerboom!')
 
   before do
     $invokes = 0
     @mgr = Minitest::Mock.new
-    opts = {:queues => ['default']}
+    opts = { queues: ['default'] }
     opts[:fetch] = Sidekiq::BasicFetch.new(opts)
     @processor = ::Sidekiq::Processor.new(@mgr, opts)
   end
@@ -20,12 +21,13 @@ describe Sidekiq::Processor do
     include Sidekiq::Worker
     def perform(args)
       raise TEST_PROC_EXCEPTION if args.to_s == 'boom'
+
       args.pop if args.is_a? Array
       $invokes += 1
     end
   end
 
-  def work(msg, queue='queue:default')
+  def work(msg, queue = 'queue:default')
     Sidekiq::BasicFetch::UnitOfWork.new(queue, msg)
   end
 
@@ -47,13 +49,13 @@ describe Sidekiq::Processor do
 
     begin
       @processor.process(work(msg))
-      flunk "Expected exception"
+      flunk 'Expected exception'
     rescue TestProcessorException
       re_raise = true
     end
 
     assert_equal 0, $invokes
-    assert re_raise, "does not re-raise exceptions after handling"
+    assert re_raise, 'does not re-raise exceptions after handling'
   end
 
   it 'does not modify original arguments' do
@@ -128,7 +130,7 @@ describe Sidekiq::Processor do
     end
 
     it 'handles exceptions raised during fetch' do
-      fetch_stub = lambda { raise StandardError, "fetch exception" }
+      fetch_stub = -> { raise StandardError, 'fetch exception' }
       # swallow logging because actually care about the added exception handler
       capture_logging do
         @processor.instance_variable_get('@strategy').stub(:retrieve_work, fetch_stub) do
@@ -148,8 +150,9 @@ describe Sidekiq::Processor do
         @skip = skip
       end
 
-      def call(worker, item, queue)
+      def call(_worker, _item, _queue)
         raise TEST_PROC_EXCEPTION if @raise_before_yield
+
         yield unless @skip
         raise TEST_PROC_EXCEPTION if @raise_after_yield
       end
@@ -183,7 +186,7 @@ describe Sidekiq::Processor do
         work.expect(:acknowledge, nil)
         begin
           @processor.process(work)
-          flunk "Expected #process to raise exception"
+          flunk 'Expected #process to raise exception'
         rescue TestProcessorException
         end
       end
@@ -196,7 +199,7 @@ describe Sidekiq::Processor do
         work.expect(:acknowledge, nil)
         begin
           @processor.process(work)
-          flunk "Expected #process to raise exception"
+          flunk 'Expected #process to raise exception'
         rescue TestProcessorException
         end
       end
@@ -219,7 +222,7 @@ describe Sidekiq::Processor do
         work.expect(:acknowledge, nil)
         begin
           @processor.process(work)
-          flunk "Expected #process to raise exception"
+          flunk 'Expected #process to raise exception'
         rescue TestProcessorException
         end
       end
@@ -236,7 +239,7 @@ describe Sidekiq::Processor do
 
   describe 'retry' do
     class ArgsMutatingServerMiddleware
-      def call(worker, item, queue)
+      def call(_worker, item, _queue)
         item['args'] = item['args'].map do |arg|
           arg.to_sym if arg.is_a?(String)
         end
@@ -245,7 +248,7 @@ describe Sidekiq::Processor do
     end
 
     class ArgsMutatingClientMiddleware
-      def call(worker, item, queue, redis_pool)
+      def call(_worker, item, _queue, _redis_pool)
         item['args'] = item['args'].map do |arg|
           arg.to_s if arg.is_a?(Symbol)
         end
@@ -276,7 +279,7 @@ describe Sidekiq::Processor do
         job_data = { 'class' => MockWorker.to_s, 'args' => ['boom'] }
 
         retry_stub_called = false
-        retry_stub = lambda { |worker, msg, queue, exception|
+        retry_stub = lambda { |_worker, msg, _queue, _exception|
           retry_stub_called = true
           assert_equal 'boom', msg['args'].first
         }
@@ -285,7 +288,7 @@ describe Sidekiq::Processor do
           msg = Sidekiq.dump_json(job_data)
           begin
             @processor.process(work(msg))
-            flunk "Expected exception"
+            flunk 'Expected exception'
           rescue TestProcessorException
           end
         end
@@ -297,11 +300,11 @@ describe Sidekiq::Processor do
 
   describe 'stats' do
     before do
-      Sidekiq.redis {|c| c.flushdb }
+      Sidekiq.redis { |c| c.flushdb }
     end
 
     describe 'when successful' do
-      let(:processed_today_key) { "stat:processed:#{Time.now.utc.strftime("%Y-%m-%d")}" }
+      let(:processed_today_key) { "stat:processed:#{Time.now.utc.strftime('%Y-%m-%d')}" }
 
       def successful_job
         msg = Sidekiq.dump_json({ 'class' => MockWorker.to_s, 'args' => ['myarg'] })
@@ -318,7 +321,7 @@ describe Sidekiq::Processor do
 
     describe 'custom job logger class' do
       class CustomJobLogger < Sidekiq::JobLogger
-        def call(item, queue)
+        def call(_item, _queue)
           yield
         rescue Exception
           raise
@@ -326,7 +329,7 @@ describe Sidekiq::Processor do
       end
 
       before do
-        opts = {:queues => ['default'], job_logger: CustomJobLogger}
+        opts = { queues: ['default'], job_logger: CustomJobLogger }
         @mgr = Minitest::Mock.new
         @processor = ::Sidekiq::Processor.new(@mgr, opts)
       end
@@ -335,7 +338,7 @@ describe Sidekiq::Processor do
 
   describe 'stats' do
     before do
-      Sidekiq.redis {|c| c.flushdb }
+      Sidekiq.redis { |c| c.flushdb }
     end
 
     def successful_job
@@ -353,7 +356,7 @@ describe Sidekiq::Processor do
 
   describe 'custom job logger class' do
     before do
-      opts = {:queues => ['default'], :job_logger => CustomJobLogger}
+      opts = { queues: ['default'], job_logger: CustomJobLogger }
       opts[:fetch] = Sidekiq::BasicFetch.new(opts)
       @processor = ::Sidekiq::Processor.new(nil, opts)
     end

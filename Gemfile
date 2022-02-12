@@ -1,27 +1,27 @@
-source "https://rubygems.org"
+source 'https://rubygems.org'
 
 gemspec
 
-gem "rake"
-gem "redis-namespace"
-gem "rails", "~> 6.0"
-gem "sqlite3", platforms: :ruby
-gem "activerecord-jdbcsqlite3-adapter", platforms: :jruby
+gem 'activerecord-jdbcsqlite3-adapter', platforms: :jruby
+gem 'rails', '~> 6.0'
+gem 'rake'
+gem 'redis-namespace'
+gem 'sqlite3', platforms: :ruby
 
 # mail dependencies
-gem "net-smtp", platforms: :mri, require: false
+gem 'net-smtp', platforms: :mri, require: false
 
 group :test do
-  gem "minitest"
-  gem "simplecov"
-  gem "codecov", require: false
+  gem 'codecov', require: false
+  gem 'minitest'
+  gem 'simplecov'
 end
 
 group :development, :test do
-  gem "standard", require: false
+  gem 'standard', require: false
 end
 
 group :load_test do
-  gem "hiredis"
-  gem "toxiproxy"
+  gem 'hiredis'
+  gem 'toxiproxy'
 end

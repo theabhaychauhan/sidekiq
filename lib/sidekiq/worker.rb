@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "sidekiq/client"
+require 'sidekiq/client'
 
 module Sidekiq
   ##
@@ -112,7 +112,9 @@ module Sidekiq
             define_singleton_method("#{name}=") do |val|
               singleton_class.class_eval do
                 ACCESSOR_MUTEX.synchronize do
-                  undef_method(synchronized_getter) if method_defined?(synchronized_getter) || private_method_defined?(synchronized_getter)
+                  if method_defined?(synchronized_getter) || private_method_defined?(synchronized_getter)
+                    undef_method(synchronized_getter)
+                  end
                   define_method(synchronized_getter) { val }
                 end
               end
@@ -143,11 +145,11 @@ module Sidekiq
               end
             end
 
-            if instance_writer
-              m = "#{name}="
-              undef_method(m) if method_defined?(m) || private_method_defined?(m)
-              attr_writer name
-            end
+            next unless instance_writer
+
+            m = "#{name}="
+            undef_method(m) if method_defined?(m) || private_method_defined?(m)
+            attr_writer name
           end
         end
       end
@@ -156,7 +158,12 @@ module Sidekiq
     attr_accessor :jid
 
     def self.included(base)
-      raise ArgumentError, "Sidekiq::Worker cannot be included in an ActiveJob: #{base.name}" if base.ancestors.any? { |c| c.name == "ActiveJob::Base" }
+      if base.ancestors.any? do |c|
+           c.name == 'ActiveJob::Base'
+         end
+        raise ArgumentError,
+              "Sidekiq::Worker cannot be included in an ActiveJob: #{base.name}"
+      end
 
       base.include(Options)
       base.extend(ClassMethods)
@@ -179,37 +186,37 @@ module Sidekiq
         @opts = opts.transform_keys(&:to_s)
 
         # ActiveJob compatibility
-        interval = @opts.delete("wait_until") || @opts.delete("wait")
+        interval = @opts.delete('wait_until') || @opts.delete('wait')
         at(interval) if interval
       end
 
       def set(options)
         hash = options.transform_keys(&:to_s)
-        interval = hash.delete("wait_until") || @opts.delete("wait")
+        interval = hash.delete('wait_until') || @opts.delete('wait')
         @opts.merge!(hash)
         at(interval) if interval
         self
       end
 
       def perform_async(*args)
-        if @opts["sync"] == true
+        if @opts['sync'] == true
           perform_inline(*args)
         else
-          @klass.client_push(@opts.merge("args" => args, "class" => @klass))
+          @klass.client_push(@opts.merge('args' => args, 'class' => @klass))
         end
       end
 
       # Explicit inline execution of a job. Returns nil if the job did not
       # execute, true otherwise.
       def perform_inline(*args)
-        raw = @opts.merge("args" => args, "class" => @klass)
+        raw = @opts.merge('args' => args, 'class' => @klass)
 
         # validate and normalize payload
         item = normalize_item(raw)
-        queue = item["queue"]
+        queue = item['queue']
 
         # run client-side middleware
-        result = Sidekiq.client_middleware.invoke(item["class"], item, queue, Sidekiq.redis_pool) do
+        result = Sidekiq.client_middleware.invoke(item['class'], item, queue, Sidekiq.redis_pool) do
           item
         end
         return nil unless result
@@ -218,29 +225,30 @@ module Sidekiq
         msg = Sidekiq.load_json(Sidekiq.dump_json(item))
 
         # prepare the job instance
-        klass = msg["class"].constantize
+        klass = msg['class'].constantize
         job = klass.new
-        job.jid = msg["jid"]
-        job.bid = msg["bid"] if job.respond_to?(:bid)
+        job.jid = msg['jid']
+        job.bid = msg['bid'] if job.respond_to?(:bid)
 
         # run the job through server-side middleware
-        result = Sidekiq.server_middleware.invoke(job, msg, msg["queue"]) do
+        result = Sidekiq.server_middleware.invoke(job, msg, msg['queue']) do
           # perform it
-          job.perform(*msg["args"])
+          job.perform(*msg['args'])
           true
         end
         return nil unless result
+
         # jobs do not return a result. they should store any
         # modified state.
         true
       end
-      alias_method :perform_sync, :perform_inline
+      alias perform_sync perform_inline
 
       def perform_bulk(args, batch_size: 1_000)
-        pool = Thread.current[:sidekiq_via_pool] || @klass.get_sidekiq_options["pool"] || Sidekiq.redis_pool
+        pool = Thread.current[:sidekiq_via_pool] || @klass.get_sidekiq_options['pool'] || Sidekiq.redis_pool
         client = Sidekiq::Client.new(pool)
         result = args.each_slice(batch_size).flat_map do |slice|
-          client.push_bulk(@opts.merge("class" => @klass, "args" => slice))
+          client.push_bulk(@opts.merge('class' => @klass, 'args' => slice))
         end
 
         result.is_a?(Enumerator::Lazy) ? result.force : result
@@ -251,7 +259,7 @@ module Sidekiq
       def perform_in(interval, *args)
         at(interval).perform_async(*args)
       end
-      alias_method :perform_at, :perform_in
+      alias perform_at perform_in
 
       private
 
@@ -260,26 +268,26 @@ module Sidekiq
         now = Time.now.to_f
         ts = (int < 1_000_000_000 ? now + int : int)
         # Optimization to enqueue something now that is scheduled to go out now or in the past
-        @opts["at"] = ts if ts > now
+        @opts['at'] = ts if ts > now
         self
       end
     end
 
     module ClassMethods
-      def delay(*args)
-        raise ArgumentError, "Do not call .delay on a Sidekiq::Worker class, call .perform_async"
+      def delay(*_args)
+        raise ArgumentError, 'Do not call .delay on a Sidekiq::Worker class, call .perform_async'
       end
 
-      def delay_for(*args)
-        raise ArgumentError, "Do not call .delay_for on a Sidekiq::Worker class, call .perform_in"
+      def delay_for(*_args)
+        raise ArgumentError, 'Do not call .delay_for on a Sidekiq::Worker class, call .perform_in'
       end
 
-      def delay_until(*args)
-        raise ArgumentError, "Do not call .delay_until on a Sidekiq::Worker class, call .perform_at"
+      def delay_until(*_args)
+        raise ArgumentError, 'Do not call .delay_until on a Sidekiq::Worker class, call .perform_at'
       end
 
       def queue_as(q)
-        sidekiq_options("queue" => q.to_s)
+        sidekiq_options('queue' => q.to_s)
       end
 
       def set(options)
@@ -326,14 +334,14 @@ module Sidekiq
         now = Time.now.to_f
         ts = (int < 1_000_000_000 ? now + int : int)
 
-        item = {"class" => self, "args" => args}
+        item = { 'class' => self, 'args' => args }
 
         # Optimization to enqueue something now that is scheduled to go out now or in the past
-        item["at"] = ts if ts > now
+        item['at'] = ts if ts > now
 
         client_push(item)
       end
-      alias_method :perform_at, :perform_in
+      alias perform_at perform_in
 
       ##
       # Allows customization for this type of Worker.
@@ -353,8 +361,10 @@ module Sidekiq
       end
 
       def client_push(item) # :nodoc:
-        pool = Thread.current[:sidekiq_via_pool] || get_sidekiq_options["pool"] || Sidekiq.redis_pool
-        raise ArgumentError, "Job payloads should contain no Symbols: #{item}" if item.any? { |k, v| k.is_a?(::Symbol) }
+        pool = Thread.current[:sidekiq_via_pool] || get_sidekiq_options['pool'] || Sidekiq.redis_pool
+        raise ArgumentError, "Job payloads should contain no Symbols: #{item}" if item.any? do |k, _v|
+                                                                                    k.is_a?(::Symbol)
+                                                                                  end
 
         Sidekiq::Client.new(pool).push(item)
       end

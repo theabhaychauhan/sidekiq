@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/api'
 
@@ -10,7 +11,7 @@ describe Sidekiq::Client do
       end
 
       assert_raises ArgumentError do
-        Sidekiq::Client.push('foo', :class => 'Foo', :noargs => [1, 2])
+        Sidekiq::Client.push('foo', class: 'Foo', noargs: [1, 2])
       end
 
       assert_raises ArgumentError do
@@ -38,19 +39,19 @@ describe Sidekiq::Client do
   describe 'as instance' do
     it 'handles nil queue' do
       assert_raises ArgumentError do
-        Sidekiq::Client.push('class' => 'Blah', 'args' => [1,2,3], 'queue' => "")
+        Sidekiq::Client.push('class' => 'Blah', 'args' => [1, 2, 3], 'queue' => '')
       end
     end
 
     it 'can push' do
       client = Sidekiq::Client.new
-      jid = client.push('class' => 'Blah', 'args' => [1,2,3])
+      jid = client.push('class' => 'Blah', 'args' => [1, 2, 3])
       assert_equal 24, jid.size
     end
 
     it 'allows middleware to stop bulk jobs' do
       mware = Class.new do
-        def call(worker_klass,msg,q,r)
+        def call(_worker_klass, msg, _q, _r)
           msg['args'][0] == 1 ? yield : false
         end
       end
@@ -60,19 +61,24 @@ describe Sidekiq::Client do
       end
       q = Sidekiq::Queue.new
       q.clear
-      result = client.push_bulk('class' => 'Blah', 'args' => [[1],[2],[3]])
+      result = client.push_bulk('class' => 'Blah', 'args' => [[1], [2], [3]])
       assert_equal 1, result.size
       assert_equal 1, q.size
     end
 
     it 'allows local middleware modification' do
       $called = false
-      mware = Class.new { def call(worker_klass,msg,q,r); $called = true; msg;end }
+      mware = Class.new do
+        def call(_worker_klass, msg, _q, _r)
+          $called = true
+          msg
+        end
+      end
       client = Sidekiq::Client.new
       client.middleware do |chain|
         chain.add mware
       end
-      client.push('class' => 'Blah', 'args' => [1,2,3])
+      client.push('class' => 'Blah', 'args' => [1, 2, 3])
 
       assert $called
       assert client.middleware.exists?(mware)
@@ -105,11 +111,11 @@ describe Sidekiq::Client do
 
     class QueuedWorker
       include Sidekiq::Worker
-      sidekiq_options :queue => :flimflam
+      sidekiq_options queue: :flimflam
     end
 
     it 'enqueues' do
-      Sidekiq.redis {|c| c.flushdb }
+      Sidekiq.redis { |c| c.flushdb }
       assert_equal Sidekiq.default_worker_options, MyWorker.get_sidekiq_options
       assert MyWorker.perform_async(1, 2)
       assert Sidekiq::Client.enqueue(MyWorker, 1, 2)
@@ -127,8 +133,7 @@ describe Sidekiq::Client do
       class InterestingWorker
         include Sidekiq::Worker
 
-        def perform(an_argument)
-        end
+        def perform(an_argument); end
       end
 
       it 'enqueues jobs with a symbol as an argument' do
@@ -157,8 +162,8 @@ describe Sidekiq::Client do
       it 'works with a JSON-friendly deep, nested structure' do
         InterestingWorker.perform_async(
           {
-            'foo' => ['a', 'b', 'c'],
-            'bar' => ['x', 'y', 'z']
+            'foo' => %w[a b c],
+            'bar' => %w[x y z]
           }
         )
       end
@@ -206,8 +211,8 @@ describe Sidekiq::Client do
         it 'works with a JSON-friendly deep, nested structure' do
           InterestingWorker.perform_async(
             {
-              'foo' => ['a', 'b', 'c'],
-              'bar' => ['x', 'y', 'z']
+              'foo' => %w[a b c],
+              'bar' => %w[x y z]
             }
           )
         end
@@ -217,8 +222,8 @@ describe Sidekiq::Client do
             assert_raises ArgumentError do
               InterestingWorker.perform_async(
                 {
-                  'foo' => [:a, :b, :c],
-                  bar: ['x', 'y', 'z']
+                  'foo' => %i[a b c],
+                  bar: %w[x y z]
                 }
               )
             end
@@ -246,7 +251,8 @@ describe Sidekiq::Client do
     it 'can push jobs scheduled at different times' do
       first_at = Time.new(2019, 1, 1)
       second_at = Time.new(2019, 1, 2)
-      jids = Sidekiq::Client.push_bulk('class' => QueuedWorker, 'args' => [[1], [2]], 'at' => [first_at.to_f, second_at.to_f])
+      jids = Sidekiq::Client.push_bulk('class' => QueuedWorker, 'args' => [[1], [2]],
+                                       'at' => [first_at.to_f, second_at.to_f])
       (first_jid, second_jid) = jids
       assert_equal first_at, Sidekiq::ScheduledSet.new.find_job(first_jid).at
       assert_equal second_at, Sidekiq::ScheduledSet.new.find_job(second_jid).at
@@ -275,7 +281,8 @@ describe Sidekiq::Client do
         end
 
         assert_raises ArgumentError do
-          Sidekiq::Client.push_bulk('class' => 'QueuedWorker', 'args' => [[1], [2]], 'at' => [Time.now.to_f, :not_a_numeric])
+          Sidekiq::Client.push_bulk('class' => 'QueuedWorker', 'args' => [[1], [2]],
+                                    'at' => [Time.now.to_f, :not_a_numeric])
         end
 
         assert_raises ArgumentError do
@@ -326,19 +333,23 @@ describe Sidekiq::Client do
     include Sidekiq::Worker
     sidekiq_options 'retry' => 'base'
   end
+
   class AWorker < BaseWorker
   end
+
   class BWorker < BaseWorker
     sidekiq_options 'retry' => 'b'
   end
+
   class CWorker < BaseWorker
     sidekiq_options 'retry' => 2
   end
 
   describe 'client middleware' do
     class Stopper
-      def call(worker_class, job, queue, r)
+      def call(_worker_class, job, _queue, r)
         raise ArgumentError unless r
+
         yield if job['args'].first.odd?
       end
     end
@@ -372,7 +383,7 @@ describe Sidekiq::Client do
       conn = MiniTest::Mock.new
       conn.expect(:pipelined, [0, 1])
       DWorker.sidekiq_options('pool' => ConnectionPool.new(size: 1) { conn })
-      DWorker.perform_async(1,2,3)
+      DWorker.perform_async(1, 2, 3)
       conn.verify
     end
 
@@ -382,7 +393,7 @@ describe Sidekiq::Client do
       sharded_pool = ConnectionPool.new(size: 1) { conn }
       Sidekiq::Client.via(sharded_pool) do
         Sidekiq::Client.via(sharded_pool) do
-          CWorker.perform_async(1,2,3)
+          CWorker.perform_async(1, 2, 3)
         end
       end
       conn.verify
@@ -400,11 +411,11 @@ describe Sidekiq::Client do
       pork = ConnectionPool.new(size: 1) { oink }
 
       Sidekiq::Client.via(beef) do
-        CWorker.perform_async(1,2,3)
+        CWorker.perform_async(1, 2, 3)
         assert_equal beef, Sidekiq::Client.new.redis_pool
         Sidekiq::Client.via(pork) do
           assert_equal pork, Sidekiq::Client.new.redis_pool
-          CWorker.perform_async(1,2,3)
+          CWorker.perform_async(1, 2, 3)
         end
         assert_equal beef, Sidekiq::Client.new.redis_pool
       end
@@ -415,7 +426,7 @@ describe Sidekiq::Client do
 
     it 'allows Resque helpers to point to different Redi' do
       conn = MiniTest::Mock.new
-      conn.expect(:pipelined, []) { |*args, &block| block.call(conn) }
+      conn.expect(:pipelined, []) { |*_args, &block| block.call(conn) }
       conn.expect(:zadd, 1, [String, Array])
       DWorker.sidekiq_options('pool' => ConnectionPool.new(size: 1) { conn })
       Sidekiq::Client.enqueue_in(10, DWorker, 3)
@@ -424,9 +435,9 @@ describe Sidekiq::Client do
   end
 
   describe 'class attribute race conditions' do
-    new_class = -> {
+    new_class = lambda {
       Class.new do
-        class_eval('include Sidekiq::Worker')
+        class_eval('include Sidekiq::Worker', __FILE__, __LINE__)
 
         define_method(:foo) { get_sidekiq_options }
       end

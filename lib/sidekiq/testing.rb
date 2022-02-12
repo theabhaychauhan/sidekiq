@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "securerandom"
-require "sidekiq"
+require 'securerandom'
+require 'sidekiq'
 
 module Sidekiq
   class Testing
@@ -57,7 +57,7 @@ module Sidekiq
       end
 
       def constantize(str)
-        names = str.split("::")
+        names = str.split('::')
         names.shift if names.empty? || names.first.empty?
 
         names.inject(Object) do |constant, name|
@@ -77,14 +77,14 @@ module Sidekiq
       if Sidekiq::Testing.fake?
         payloads.each do |job|
           job = Sidekiq.load_json(Sidekiq.dump_json(job))
-          job["enqueued_at"] = Time.now.to_f unless job["at"]
-          Queues.push(job["queue"], job["class"], job)
+          job['enqueued_at'] = Time.now.to_f unless job['at']
+          Queues.push(job['queue'], job['class'], job)
         end
         true
       elsif Sidekiq::Testing.inline?
         payloads.each do |job|
-          klass = Sidekiq::Testing.constantize(job["class"])
-          job["id"] ||= SecureRandom.hex(12)
+          klass = Sidekiq::Testing.constantize(job['class'])
+          job['id'] ||= SecureRandom.hex(12)
           job_hash = Sidekiq.load_json(Sidekiq.dump_json(job))
           klass.process_job(job_hash)
         end
@@ -182,8 +182,8 @@ module Sidekiq
       end
 
       def delete_for(jid, queue, klass)
-        jobs_by_queue[queue.to_s].delete_if { |job| job["jid"] == jid }
-        jobs_by_worker[klass].delete_if { |job| job["jid"] == jid }
+        jobs_by_queue[queue.to_s].delete_if { |job| job['jid'] == jid }
+        jobs_by_worker[klass].delete_if { |job| job['jid'] == jid }
       end
 
       def clear_for(queue, klass)
@@ -257,7 +257,7 @@ module Sidekiq
     module ClassMethods
       # Queue for this worker
       def queue
-        get_sidekiq_options["queue"]
+        get_sidekiq_options['queue']
       end
 
       # Jobs queued for this worker
@@ -274,25 +274,26 @@ module Sidekiq
       def drain
         while jobs.any?
           next_job = jobs.first
-          Queues.delete_for(next_job["jid"], next_job["queue"], to_s)
+          Queues.delete_for(next_job['jid'], next_job['queue'], to_s)
           process_job(next_job)
         end
       end
 
       # Pop out a single job and perform it
       def perform_one
-        raise(EmptyQueueError, "perform_one called with empty job queue") if jobs.empty?
+        raise(EmptyQueueError, 'perform_one called with empty job queue') if jobs.empty?
+
         next_job = jobs.first
-        Queues.delete_for(next_job["jid"], queue, to_s)
+        Queues.delete_for(next_job['jid'], queue, to_s)
         process_job(next_job)
       end
 
       def process_job(job)
         worker = new
-        worker.jid = job["jid"]
-        worker.bid = job["bid"] if worker.respond_to?(:bid=)
-        Sidekiq::Testing.server_middleware.invoke(worker, job, job["queue"]) do
-          execute_job(worker, job["args"])
+        worker.jid = job['jid']
+        worker.bid = job['bid'] if worker.respond_to?(:bid=)
+        Sidekiq::Testing.server_middleware.invoke(worker, job, job['queue']) do
+          execute_job(worker, job['args'])
         end
       end
 
@@ -314,7 +315,7 @@ module Sidekiq
       # Drain all queued jobs across all workers
       def drain_all
         while jobs.any?
-          worker_classes = jobs.map { |job| job["class"] }.uniq
+          worker_classes = jobs.map { |job| job['class'] }.uniq
 
           worker_classes.each do |worker_class|
             Sidekiq::Testing.constantize(worker_class).drain
@@ -327,7 +328,7 @@ module Sidekiq
   module TestingExtensions
     def jobs_for(klass)
       jobs.select do |job|
-        marshalled = job["args"][0]
+        marshalled = job['args'][0]
         marshalled.index(klass.to_s) && YAML.load(marshalled)[0] == klass
       end
     end
@@ -338,5 +339,7 @@ module Sidekiq
 end
 
 if defined?(::Rails) && Rails.respond_to?(:env) && !Rails.env.test? && !$TESTING
-  warn("⛔️ WARNING: Sidekiq testing API enabled, but this is not the test environment.  Your jobs will not go to Redis.", uplevel: 1)
+  warn(
+    '⛔️ WARNING: Sidekiq testing API enabled, but this is not the test environment.  Your jobs will not go to Redis.', uplevel: 1
+  )
 end

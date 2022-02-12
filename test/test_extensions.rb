@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/api'
 require 'active_record'
@@ -7,12 +8,12 @@ Sidekiq::Extensions.enable_delay!
 
 describe Sidekiq::Extensions do
   before do
-    Sidekiq.redis {|c| c.flushdb }
+    Sidekiq.redis { |c| c.flushdb }
   end
 
   class MyModel < ActiveRecord::Base
     def self.long_class_method
-      raise "Should not be called!"
+      raise 'Should not be called!'
     end
   end
 
@@ -50,8 +51,8 @@ describe Sidekiq::Extensions do
   end
 
   class UserMailer < ActionMailer::Base
-    def greetings(a, b)
-      raise "Should not be called!"
+    def greetings(_a, _b)
+      raise 'Should not be called!'
     end
   end
 
@@ -79,8 +80,7 @@ describe Sidekiq::Extensions do
   end
 
   class SomeClass
-    def self.doit(arg)
-    end
+    def self.doit(arg); end
   end
 
   it 'allows delay of any ole class method' do
@@ -91,8 +91,7 @@ describe Sidekiq::Extensions do
   end
 
   module SomeModule
-    def self.doit(arg)
-    end
+    def self.doit(arg); end
   end
 
   it 'logs large payloads' do
@@ -108,5 +107,4 @@ describe Sidekiq::Extensions do
     SomeModule.delay.doit(Date.today)
     assert_equal 1, q.size
   end
-
 end

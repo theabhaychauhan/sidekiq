@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 
-require "sidekiq/monitor"
+require 'sidekiq/monitor'
 
-section = "all"
+section = 'all'
 section = ARGV[0] if ARGV.size == 1
 
 Sidekiq::Monitor::Status.new.display(section)

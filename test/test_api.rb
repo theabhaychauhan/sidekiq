@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'helper'
 require 'sidekiq/api'
 require 'active_job'
@@ -6,11 +7,11 @@ require 'action_mailer'
 
 describe 'API' do
   before do
-    Sidekiq.redis {|c| c.flushdb }
+    Sidekiq.redis { |c| c.flushdb }
   end
 
-  describe "stats" do
-    it "is initially zero" do
+  describe 'stats' do
+    it 'is initially zero' do
       s = Sidekiq::Stats.new
       assert_equal 0, s.processed
       assert_equal 0, s.failed
@@ -19,23 +20,23 @@ describe 'API' do
       assert_equal 0, s.workers_size
     end
 
-    describe "processed" do
-      it "returns number of processed jobs" do
-        Sidekiq.redis { |conn| conn.set("stat:processed", 5) }
+    describe 'processed' do
+      it 'returns number of processed jobs' do
+        Sidekiq.redis { |conn| conn.set('stat:processed', 5) }
         s = Sidekiq::Stats.new
         assert_equal 5, s.processed
       end
     end
 
-    describe "failed" do
-      it "returns number of failed jobs" do
-        Sidekiq.redis { |conn| conn.set("stat:failed", 5) }
+    describe 'failed' do
+      it 'returns number of failed jobs' do
+        Sidekiq.redis { |conn| conn.set('stat:failed', 5) }
         s = Sidekiq::Stats.new
         assert_equal 5, s.failed
       end
     end
 
-    describe "reset" do
+    describe 'reset' do
       before do
         Sidekiq.redis do |conn|
           conn.set('stat:processed', 5)
@@ -72,26 +73,26 @@ describe 'API' do
       end
     end
 
-    describe "workers_size" do
+    describe 'workers_size' do
       it 'retrieves the number of busy workers' do
         Sidekiq.redis do |c|
-          c.sadd("processes", "process_1")
-          c.sadd("processes", "process_2")
-          c.hset("process_1", "busy", 1)
-          c.hset("process_2", "busy", 2)
+          c.sadd('processes', 'process_1')
+          c.sadd('processes', 'process_2')
+          c.hset('process_1', 'busy', 1)
+          c.hset('process_2', 'busy', 2)
         end
         s = Sidekiq::Stats.new
         assert_equal 3, s.workers_size
       end
     end
 
-    describe "queues" do
-      it "is initially empty" do
+    describe 'queues' do
+      it 'is initially empty' do
         s = Sidekiq::Stats::Queues.new
         assert_equal 0, s.lengths.size
       end
 
-      it "returns a hash of queue and size in order" do
+      it 'returns a hash of queue and size in order' do
         Sidekiq.redis do |conn|
           conn.rpush 'queue:foo', '{}'
           conn.sadd 'queues', 'foo'
@@ -101,14 +102,14 @@ describe 'API' do
         end
 
         s = Sidekiq::Stats::Queues.new
-        assert_equal ({ "foo" => 1, "bar" => 3 }), s.lengths
-        assert_equal "bar", s.lengths.first.first
+        assert_equal ({ 'foo' => 1, 'bar' => 3 }), s.lengths
+        assert_equal 'bar', s.lengths.first.first
 
         assert_equal Sidekiq::Stats.new.queues, Sidekiq::Stats::Queues.new.lengths
       end
     end
 
-    describe "enqueued" do
+    describe 'enqueued' do
       it 'handles latency for good jobs' do
         Sidekiq.redis do |conn|
           conn.rpush 'queue:default', "{\"enqueued_at\": #{Time.now.to_f}}"
@@ -131,7 +132,7 @@ describe 'API' do
         assert_equal 0, q.latency
       end
 
-      it "returns total enqueued jobs" do
+      it 'returns total enqueued jobs' do
         Sidekiq.redis do |conn|
           conn.rpush 'queue:foo', '{}'
           conn.sadd 'queues', 'foo'
@@ -145,19 +146,19 @@ describe 'API' do
       end
     end
 
-    describe "over time" do
+    describe 'over time' do
       before do
         require 'active_support/core_ext/time/conversions'
         @before = Time::DATE_FORMATS[:default]
-        Time::DATE_FORMATS[:default] = "%d/%m/%Y %H:%M:%S"
+        Time::DATE_FORMATS[:default] = '%d/%m/%Y %H:%M:%S'
       end
 
       after do
         Time::DATE_FORMATS[:default] = @before
       end
 
-      describe "history" do
-        it "does not allow invalid input" do
+      describe 'history' do
+        it 'does not allow invalid input' do
           assert_raises(ArgumentError) { Sidekiq::Stats::History.new(-1) }
           assert_raises(ArgumentError) { Sidekiq::Stats::History.new(0) }
           assert_raises(ArgumentError) { Sidekiq::Stats::History.new(2000) }
@@ -165,44 +166,44 @@ describe 'API' do
         end
       end
 
-      describe "processed" do
+      describe 'processed' do
         it 'retrieves hash of dates' do
           Sidekiq.redis do |c|
-            c.incrby("stat:processed:2012-12-24", 4)
-            c.incrby("stat:processed:2012-12-25", 1)
-            c.incrby("stat:processed:2012-12-26", 6)
-            c.incrby("stat:processed:2012-12-27", 2)
+            c.incrby('stat:processed:2012-12-24', 4)
+            c.incrby('stat:processed:2012-12-25', 1)
+            c.incrby('stat:processed:2012-12-26', 6)
+            c.incrby('stat:processed:2012-12-27', 2)
           end
-          Time.stub(:now, Time.parse("2012-12-26 1:00:00 -0500")) do
+          Time.stub(:now, Time.parse('2012-12-26 1:00:00 -0500')) do
             s = Sidekiq::Stats::History.new(2)
-            assert_equal({ "2012-12-26" => 6, "2012-12-25" => 1 }, s.processed)
+            assert_equal({ '2012-12-26' => 6, '2012-12-25' => 1 }, s.processed)
 
             s = Sidekiq::Stats::History.new(3)
-            assert_equal({ "2012-12-26" => 6, "2012-12-25" => 1, "2012-12-24" => 4 }, s.processed)
+            assert_equal({ '2012-12-26' => 6, '2012-12-25' => 1, '2012-12-24' => 4 }, s.processed)
 
-            s = Sidekiq::Stats::History.new(2, Date.parse("2012-12-25"))
-            assert_equal({ "2012-12-25" => 1, "2012-12-24" => 4 }, s.processed)
+            s = Sidekiq::Stats::History.new(2, Date.parse('2012-12-25'))
+            assert_equal({ '2012-12-25' => 1, '2012-12-24' => 4 }, s.processed)
           end
         end
       end
 
-      describe "failed" do
+      describe 'failed' do
         it 'retrieves hash of dates' do
           Sidekiq.redis do |c|
-            c.incrby("stat:failed:2012-12-24", 4)
-            c.incrby("stat:failed:2012-12-25", 1)
-            c.incrby("stat:failed:2012-12-26", 6)
-            c.incrby("stat:failed:2012-12-27", 2)
+            c.incrby('stat:failed:2012-12-24', 4)
+            c.incrby('stat:failed:2012-12-25', 1)
+            c.incrby('stat:failed:2012-12-26', 6)
+            c.incrby('stat:failed:2012-12-27', 2)
           end
-          Time.stub(:now, Time.parse("2012-12-26 1:00:00 -0500")) do
+          Time.stub(:now, Time.parse('2012-12-26 1:00:00 -0500')) do
             s = Sidekiq::Stats::History.new(2)
-            assert_equal ({ "2012-12-26" => 6, "2012-12-25" => 1 }), s.failed
+            assert_equal ({ '2012-12-26' => 6, '2012-12-25' => 1 }), s.failed
 
             s = Sidekiq::Stats::History.new(3)
-            assert_equal ({ "2012-12-26" => 6, "2012-12-25" => 1, "2012-12-24" => 4 }), s.failed
+            assert_equal ({ '2012-12-26' => 6, '2012-12-25' => 1, '2012-12-24' => 4 }), s.failed
 
-            s = Sidekiq::Stats::History.new(2, Date.parse("2012-12-25"))
-            assert_equal ({ "2012-12-25" => 1, "2012-12-24" => 4 }), s.failed
+            s = Sidekiq::Stats::History.new(2, Date.parse('2012-12-25'))
+            assert_equal ({ '2012-12-25' => 1, '2012-12-24' => 4 }), s.failed
           end
         end
       end
@@ -222,13 +223,11 @@ describe 'API' do
     end
 
     class ApiMailer < ActionMailer::Base
-      def test_email(*)
-      end
+      def test_email(*); end
     end
 
     class ApiJob < ActiveJob::Base
-      def perform(*)
-      end
+      def perform(*); end
     end
 
     class ApiWorker
@@ -275,26 +274,27 @@ describe 'API' do
 
     it 'unwraps delayed jobs' do
       Sidekiq::Extensions.enable_delay!
-      Sidekiq::Queue.delay.foo(1,2,3)
+      Sidekiq::Queue.delay.foo(1, 2, 3)
       q = Sidekiq::Queue.new
       x = q.first
-      assert_equal "Sidekiq::Queue.foo", x.display_class
-      assert_equal [1,2,3], x.display_args
+      assert_equal 'Sidekiq::Queue.foo', x.display_class
+      assert_equal [1, 2, 3], x.display_args
     end
 
     it 'handles previous (raw Array) error_backtrace format' do
       add_retry
       job = Sidekiq::RetrySet.new.first
-      assert_equal ['line1', 'line2'], job.error_backtrace
+      assert_equal %w[line1 line2], job.error_backtrace
     end
 
     it 'handles previous (marshalled Array) error_backtrace format' do
-      backtrace = ['line1', 'line2']
+      backtrace = %w[line1 line2]
       serialized = Marshal.dump(backtrace)
       compressed = Zlib::Deflate.deflate(serialized)
       encoded = Base64.encode64(compressed)
 
-      payload = Sidekiq.dump_json('class' => 'ApiWorker', 'args' => [1], 'queue' => 'default', 'jid' => 'jid', 'error_backtrace' => encoded)
+      payload = Sidekiq.dump_json('class' => 'ApiWorker', 'args' => [1], 'queue' => 'default', 'jid' => 'jid',
+                                  'error_backtrace' => encoded)
       Sidekiq.redis do |conn|
         conn.zadd('retry', Time.now.to_f.to_s, payload)
       end
@@ -303,31 +303,31 @@ describe 'API' do
       assert_equal backtrace, job.error_backtrace
     end
 
-    describe "Rails unwrapping" do
+    describe 'Rails unwrapping' do
       SERIALIZED_JOBS = {
-        "5.x" => [
+        '5.x' => [
           '{"class":"ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper","wrapped":"ApiJob","queue":"default","args":[{"job_class":"ApiJob","job_id":"f1bde53f-3852-4ae4-a879-c12eacebbbb0","provider_job_id":null,"queue_name":"default","priority":null,"arguments":[1,2,3],"executions":0,"locale":"en"}],"retry":true,"jid":"099eee72911085a511d0e312","created_at":1568305542.339916,"enqueued_at":1568305542.339947}',
-          '{"class":"ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper","wrapped":"ActionMailer::DeliveryJob","queue":"mailers","args":[{"job_class":"ActionMailer::DeliveryJob","job_id":"19cc0115-3d1c-4bbe-a51e-bfa1385895d1","provider_job_id":null,"queue_name":"mailers","priority":null,"arguments":["ApiMailer","test_email","deliver_now",1,2,3],"executions":0,"locale":"en"}],"retry":true,"jid":"37436e5504936400e8cf98db","created_at":1568305542.370133,"enqueued_at":1568305542.370241}',
+          '{"class":"ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper","wrapped":"ActionMailer::DeliveryJob","queue":"mailers","args":[{"job_class":"ActionMailer::DeliveryJob","job_id":"19cc0115-3d1c-4bbe-a51e-bfa1385895d1","provider_job_id":null,"queue_name":"mailers","priority":null,"arguments":["ApiMailer","test_email","deliver_now",1,2,3],"executions":0,"locale":"en"}],"retry":true,"jid":"37436e5504936400e8cf98db","created_at":1568305542.370133,"enqueued_at":1568305542.370241}'
         ],
-        "6.x" => [
+        '6.x' => [
           '{"class":"ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper","wrapped":"ApiJob","queue":"default","args":[{"job_class":"ApiJob","job_id":"ff2b48d4-bdce-4825-af6b-ef8c11ab651e","provider_job_id":null,"queue_name":"default","priority":null,"arguments":[1,2,3],"executions":0,"exception_executions":{},"locale":"en","timezone":"UTC","enqueued_at":"2019-09-12T16:28:37Z"}],"retry":true,"jid":"ce121bf77b37ae81fe61b6dc","created_at":1568305717.9469702,"enqueued_at":1568305717.947005}',
-          '{"class":"ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper","wrapped":"ActionMailer::MailDeliveryJob","queue":"mailers","args":[{"job_class":"ActionMailer::MailDeliveryJob","job_id":"2f967da1-a389-479c-9a4e-5cc059e6d65c","provider_job_id":null,"queue_name":"mailers","priority":null,"arguments":["ApiMailer","test_email","deliver_now",{"args":[1,2,3],"_aj_symbol_keys":["args"]}],"executions":0,"exception_executions":{},"locale":"en","timezone":"UTC","enqueued_at":"2019-09-12T16:28:37Z"}],"retry":true,"jid":"469979df52bb9ef9f48b49e1","created_at":1568305717.9457421,"enqueued_at":1568305717.9457731}',
-        ],
-      }.each_pair do |ver,jobs|
+          '{"class":"ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper","wrapped":"ActionMailer::MailDeliveryJob","queue":"mailers","args":[{"job_class":"ActionMailer::MailDeliveryJob","job_id":"2f967da1-a389-479c-9a4e-5cc059e6d65c","provider_job_id":null,"queue_name":"mailers","priority":null,"arguments":["ApiMailer","test_email","deliver_now",{"args":[1,2,3],"_aj_symbol_keys":["args"]}],"executions":0,"exception_executions":{},"locale":"en","timezone":"UTC","enqueued_at":"2019-09-12T16:28:37Z"}],"retry":true,"jid":"469979df52bb9ef9f48b49e1","created_at":1568305717.9457421,"enqueued_at":1568305717.9457731}'
+        ]
+      }.each_pair do |ver, jobs|
         it "unwraps ActiveJob #{ver} jobs" do
-          #ApiJob.perform_later(1,2,3)
-          #puts Sidekiq::Queue.new.first.value
-          x = Sidekiq::JobRecord.new(jobs[0], "default")
+          # ApiJob.perform_later(1,2,3)
+          # puts Sidekiq::Queue.new.first.value
+          x = Sidekiq::JobRecord.new(jobs[0], 'default')
           assert_equal ApiJob.name, x.display_class
-          assert_equal [1,2,3], x.display_args
+          assert_equal [1, 2, 3], x.display_args
         end
 
         it "unwraps ActionMailer #{ver} jobs" do
-          #ApiMailer.test_email(1,2,3).deliver_later
-          #puts Sidekiq::Queue.new("mailers").first.value
-          x = Sidekiq::JobRecord.new(jobs[1], "mailers")
+          # ApiMailer.test_email(1,2,3).deliver_later
+          # puts Sidekiq::Queue.new("mailers").first.value
+          x = Sidekiq::JobRecord.new(jobs[1], 'mailers')
           assert_equal "#{ApiMailer.name}#test_email", x.display_class
-          assert_equal [1,2,3], x.display_args
+          assert_equal [1, 2, 3], x.display_args
         end
       end
     end
@@ -353,13 +353,13 @@ describe 'API' do
 
       x = q.first
       assert_equal ApiWorker.name, x.display_class
-      assert_equal [1,'mike'], x.display_args
+      assert_equal [1, 'mike'], x.display_args
 
       assert_equal [true], q.map(&:delete)
       assert_equal 0, q.size
     end
 
-    it "can move scheduled job to queue" do
+    it 'can move scheduled job to queue' do
       remain_id = ApiWorker.perform_in(100, 1, 'jason')
       job_id = ApiWorker.perform_in(100, 1, 'jason')
       job = Sidekiq::ScheduledSet.new.find_job(job_id)
@@ -372,7 +372,7 @@ describe 'API' do
       refute_nil Sidekiq::ScheduledSet.new.find_job(remain_id)
     end
 
-    it "handles multiple scheduled jobs when moving to queue" do
+    it 'handles multiple scheduled jobs when moving to queue' do
       jids = Sidekiq::Client.push_bulk('class' => ApiWorker,
                                        'args' => [[1, 'jason'], [2, 'jason']],
                                        'at' => Time.now.to_f)
@@ -556,14 +556,14 @@ describe 'API' do
     end
 
     it 'can enumerate processes' do
-      identity_string = "identity_string"
+      identity_string = 'identity_string'
       odata = {
         'pid' => 123,
         'hostname' => Socket.gethostname,
         'key' => identity_string,
         'identity' => identity_string,
         'started_at' => Time.now.to_f - 15,
-        'queues' => ['foo', 'bar']
+        'queues' => %w[foo bar]
       }
 
       time = Time.now.to_f
@@ -581,12 +581,12 @@ describe 'API' do
       assert_equal 10, data['busy']
       assert_equal time, data['beat']
       assert_equal 123, data['pid']
-      assert_equal ['foo', 'bar'], data.queues
+      assert_equal %w[foo bar], data.queues
       data.quiet!
       data.stop!
       signals_string = "#{odata['key']}-signals"
-      assert_equal "TERM", Sidekiq.redis{|c| c.lpop(signals_string) }
-      assert_equal "TSTP", Sidekiq.redis{|c| c.lpop(signals_string) }
+      assert_equal 'TERM', Sidekiq.redis { |c| c.lpop(signals_string) }
+      assert_equal 'TSTP', Sidekiq.redis { |c| c.lpop(signals_string) }
     end
 
     it 'can enumerate workers' do
@@ -605,21 +605,21 @@ describe 'API' do
       end
 
       s = "#{key}:workers"
-      data = Sidekiq.dump_json({ 'payload' => "{}", 'queue' => 'default', 'run_at' => Time.now.to_i })
+      data = Sidekiq.dump_json({ 'payload' => '{}', 'queue' => 'default', 'run_at' => Time.now.to_i })
       Sidekiq.redis do |c|
         c.hmset(s, '1234', data)
       end
 
       w.each do |p, x, y|
         assert_equal key, p
-        assert_equal "1234", x
+        assert_equal '1234', x
         assert_equal 'default', y['queue']
         assert_equal({}, y['payload'])
         assert_equal Time.now.year, Time.at(y['run_at']).year
       end
 
       s = "#{key}:workers"
-      data = Sidekiq.dump_json({ 'payload' => {}, 'queue' => 'default', 'run_at' => (Time.now.to_i - 2*60*60) })
+      data = Sidekiq.dump_json({ 'payload' => {}, 'queue' => 'default', 'run_at' => (Time.now.to_i - 2 * 60 * 60) })
       Sidekiq.redis do |c|
         c.multi do |transaction|
           transaction.hmset(s, '5678', data)
@@ -627,7 +627,7 @@ describe 'API' do
         end
       end
 
-      assert_equal ['5678', '1234'], w.map { |_, tid, _| tid }
+      assert_equal %w[5678 1234], w.map { |_, tid, _| tid }
     end
 
     it 'can reschedule jobs' do
@@ -661,8 +661,8 @@ describe 'API' do
       assert_equal 1, ps.to_a.size
 
       Sidekiq.redis do |conn|
-        conn.sadd('processes', "bar:987")
-        conn.sadd('processes', "bar:986")
+        conn.sadd('processes', 'bar:987')
+        conn.sadd('processes', 'bar:986')
       end
 
       ps = Sidekiq::ProcessSet.new
@@ -671,7 +671,8 @@ describe 'API' do
     end
 
     def add_retry(jid = 'bob', at = Time.now.to_f)
-      payload = Sidekiq.dump_json('class' => 'ApiWorker', 'args' => [1, 'mike'], 'queue' => 'default', 'jid' => jid, 'retry_count' => 2, 'failed_at' => Time.now.to_f, 'error_backtrace' => ['line1', 'line2'])
+      payload = Sidekiq.dump_json('class' => 'ApiWorker', 'args' => [1, 'mike'], 'queue' => 'default', 'jid' => jid,
+                                  'retry_count' => 2, 'failed_at' => Time.now.to_f, 'error_backtrace' => %w[line1 line2])
       Sidekiq.redis do |conn|
         conn.zadd('retry', at.to_s, payload)
       end

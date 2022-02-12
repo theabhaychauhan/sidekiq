@@ -6,7 +6,7 @@ require 'sidekiq/launcher'
 describe Sidekiq::Launcher do
   subject { Sidekiq::Launcher.new(options) }
   before do
-    Sidekiq.redis {|c| c.flushdb }
+    Sidekiq.redis { |c| c.flushdb }
   end
 
   def new_manager(opts)
@@ -28,7 +28,7 @@ describe Sidekiq::Launcher do
       @launcher.manager = @mgr
       @id = @launcher.identity
 
-      Sidekiq::Processor::WORKER_STATE.set('a', {'b' => 1})
+      Sidekiq::Processor::WORKER_STATE.set('a', { 'b' => 1 })
 
       @proctitle = $0
     end
@@ -51,13 +51,13 @@ describe Sidekiq::Launcher do
 
           workers, rtt = Sidekiq.redis { |c| c.hmget(subject.identity, 'busy', 'rtt_us') }
 
-          assert_equal "1", workers
+          assert_equal '1', workers
           refute_nil rtt
           assert_in_delta 1000, rtt.to_i, 1000
 
           expires = Sidekiq.redis { |c| c.pttl(subject.identity) }
 
-          assert_in_delta 60000, expires, 500
+          assert_in_delta 60_000, expires, 500
         end
 
         describe 'events' do
@@ -95,45 +95,45 @@ describe Sidekiq::Launcher do
 
           info = Sidekiq.redis { |c| c.hmget(subject.identity, 'busy') }
 
-          assert_equal ["1"], info
+          assert_equal ['1'], info
 
           expires = Sidekiq.redis { |c| c.pttl(subject.identity) }
 
-          assert_in_delta 60000, expires, 50
+          assert_in_delta 60_000, expires, 50
         end
       end
 
-    it 'fires new heartbeat events' do
-      i = 0
-      Sidekiq.on(:heartbeat) do
-        i += 1
-      end
-      assert_equal 0, i
-      @launcher.heartbeat
-      assert_equal 1, i
-      @launcher.heartbeat
-      assert_equal 1, i
-    end
-
-    describe 'when manager is active' do
-      before do
-        Sidekiq::Launcher::PROCTITLES << proc { "xyz" }
+      it 'fires new heartbeat events' do
+        i = 0
+        Sidekiq.on(:heartbeat) do
+          i += 1
+        end
+        assert_equal 0, i
         @launcher.heartbeat
-        Sidekiq::Launcher::PROCTITLES.pop
+        assert_equal 1, i
+        @launcher.heartbeat
+        assert_equal 1, i
       end
 
-      it 'sets useful info to proctitle' do
-        assert_equal "sidekiq #{Sidekiq::VERSION} myapp [1 of 3 busy] xyz", $0
-      end
+      describe 'when manager is active' do
+        before do
+          Sidekiq::Launcher::PROCTITLES << proc { 'xyz' }
+          @launcher.heartbeat
+          Sidekiq::Launcher::PROCTITLES.pop
+        end
 
-      it 'stores process info in redis' do
-        info = Sidekiq.redis { |c| c.hmget(@id, 'busy') }
-        assert_equal ["1"], info
-        expires = Sidekiq.redis { |c| c.pttl(@id) }
-        assert_in_delta 60000, expires, 500
+        it 'sets useful info to proctitle' do
+          assert_equal "sidekiq #{Sidekiq::VERSION} myapp [1 of 3 busy] xyz", $0
+        end
+
+        it 'stores process info in redis' do
+          info = Sidekiq.redis { |c| c.hmget(@id, 'busy') }
+          assert_equal ['1'], info
+          expires = Sidekiq.redis { |c| c.pttl(@id) }
+          assert_in_delta 60_000, expires, 500
+        end
       end
     end
-  end
 
     describe 'when manager is stopped' do
       before do
@@ -141,9 +141,9 @@ describe Sidekiq::Launcher do
         @launcher.heartbeat
       end
 
-      #after do
-        #puts system('redis-cli -n 15 keys  "*" | while read LINE ; do TTL=`redis-cli -n 15 ttl "$LINE"`; if [ "$TTL" -eq -1 ]; then echo "$LINE"; fi; done;')
-      #end
+      # after do
+      # puts system('redis-cli -n 15 keys  "*" | while read LINE ; do TTL=`redis-cli -n 15 ttl "$LINE"`; if [ "$TTL" -eq -1 ]; then echo "$LINE"; fi; done;')
+      # end
 
       it 'indicates stopping status in proctitle' do
         assert_equal "sidekiq #{Sidekiq::VERSION} myapp [1 of 3 busy] stopping", $0
@@ -151,15 +151,14 @@ describe Sidekiq::Launcher do
 
       it 'stores process info in redis' do
         info = Sidekiq.redis { |c| c.hmget(@id, 'busy') }
-        assert_equal ["1"], info
+        assert_equal ['1'], info
         expires = Sidekiq.redis { |c| c.pttl(@id) }
-        assert_in_delta 60000, expires, 50
+        assert_in_delta 60_000, expires, 50
       end
     end
   end
 
   def options
-    { :concurrency => 3, :queues => ['default'], :tag => 'myapp' }
+    { concurrency: 3, queues: ['default'], tag: 'myapp' }
   end
-
 end
